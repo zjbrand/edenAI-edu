@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg-dark: #020617;
   --bg-dark-soft: #0f172a;
   --bg-light: #f3f4f6;
@@ -12,24 +12,20 @@
   --text-dark: #111827;
 }
 
-/* 让页面从最左到最右撑满 */
 html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  box-shadow: inset 0 0 0 6px red !important;
 }
 
-/* 根容器：根据主题切换背景和文字色 */
 .app-root {
   min-height: 100vh;
-  width: 100%;              /* 不用 100vw，避免水平滚动条 */
+  width: 100%;
   display: flex;
   justify-content: flex-start;
   align-items: stretch;
   overflow-x: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
@@ -43,21 +39,18 @@ html, body, #root {
   color: var(--text-dark);
 }
 
-/* 整体布局：侧边栏 + 主内容 */
 .app-layout {
   position: relative;
   width: 100%;
   max-width: none;
   height: 100vh;
-  margin: 0;                /* 重要：不要再有 margin: 0 auto 之类 */
+  margin: 0;
   display: flex;
   border-radius: 0;
   overflow: hidden;
   box-shadow: none;
 }
 
-
-/* 主题下 panel 背景 */
 .app-root.dark .app-layout {
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
@@ -68,12 +61,11 @@ html, body, #root {
   border: 1px solid var(--border-light);
 }
 
-/* 侧边栏 */
 .sidebar {
   width: 240px;
   position: relative;
-  height: 100vh;     /* 占满整屏 */
-  flex-shrink: 0;  /* 防止被主区域挤压变矮 */
+  height: 100vh;
+  flex-shrink: 0;
 }
 
 .sidebar-inner {
@@ -82,22 +74,13 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   padding: 16px 12px;
-  background: linear-gradient(
-    180deg,
-    rgba(8, 47, 73, 0.9),
-    rgba(15, 23, 42, 0.98)
-  );
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.9), rgba(15, 23, 42, 0.98));
 }
 
 .app-root.light .sidebar-inner {
-  background: linear-gradient(
-    180deg,
-    rgba(191, 219, 254, 0.9),
-    rgba(221, 239, 253, 0.98)
-  );
+  background: linear-gradient(180deg, rgba(191, 219, 254, 0.9), rgba(221, 239, 253, 0.98));
 }
 
-/* 侧边栏头部 */
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -124,7 +107,6 @@ html, body, #root {
   opacity: 0.8;
 }
 
-/* 侧边栏导航 */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -167,13 +149,9 @@ html, body, #root {
   box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45);
 }
 
-/* 侧边栏底部按钮 */
 .sidebar-footer {
   position: absolute;
-
-  /* 这里控制“抬高”多少：你现在的屏幕看起来再往上 1 行左右就很接近输入框 */
-  bottom: 70px;   /* 可以试着在 90 ~ 130 之间微调，选你看着最顺眼的值 */
-
+  bottom: 70px;
   left: 16px;
   right: 16px;
   display: flex;
@@ -220,21 +198,20 @@ html, body, #root {
   background: rgba(127, 29, 29, 0.8);
 }
 
-/* 主内容区域 */
 .main-panel {
   flex: 1 1 auto;
-  min-width: 0;             /* 防止内部内容撑破，导致右侧再出现空白 */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   position: relative;
   background: var(--bg-dark-soft);
+  overflow-y: auto;
 }
 
 .app-root.light .main-panel {
-  background: var(--bg-light);       /* 亮色主题下右侧背景 */
+  background: var(--bg-light);
 }
 
-/* 移动端顶部工具栏（桌面端隐藏） */
 .mobile-top-bar {
   display: none;
   align-items: center;
@@ -255,7 +232,6 @@ html, body, #root {
   font-weight: 600;
 }
 
-/* 聊天视图 */
 .chat-view {
   flex: 1;
   display: flex;
@@ -263,35 +239,25 @@ html, body, #root {
   height: 100%;
 }
 
-/* 版权文字样式 */
-  .copyright {
-    margin-top: 4px;
-    text-align: center;
-    font-size: 12px;
-    opacity: 0.6;
+.copyright {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
 }
 
-/* 聊天顶部栏 */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-dark);
-  background: linear-gradient(
-    90deg,
-    rgba(56, 189, 248, 0.12),
-    rgba(129, 140, 248, 0.12)
-  );
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), rgba(129, 140, 248, 0.12));
 }
 
 .app-root.light .top-bar {
   border-bottom-color: var(--border-light);
-  background: linear-gradient(
-    90deg,
-    rgba(191, 219, 254, 0.6),
-    rgba(221, 214, 254, 0.6)
-  );
+  background: linear-gradient(90deg, rgba(191, 219, 254, 0.6), rgba(221, 214, 254, 0.6));
 }
 
 .top-bar-left {
@@ -338,7 +304,6 @@ html, body, #root {
   border-color: var(--border-light);
 }
 
-/* 主题切换按钮 */
 .theme-toggle {
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.7);
@@ -364,7 +329,6 @@ html, body, #root {
   padding: 6px 14px;
 }
 
-/* 聊天主体区域 */
 .chat-body {
   flex: 1;
   padding: 12px 16px;
@@ -379,7 +343,6 @@ html, body, #root {
   font-size: 13px;
 }
 
-/* 消息气泡行 */
 .chat-message-row {
   margin-bottom: 12px;
   display: flex;
@@ -387,14 +350,13 @@ html, body, #root {
 }
 
 .chat-message-row.align-right {
-  justifyContent: flex-end;
+  justify-content: flex-end;
 }
 
 .chat-message-row.align-left {
   justify-content: flex-start;
 }
 
-/* 气泡 */
 .chat-message-bubble {
   max-width: 72%;
   padding: 8px 10px;
@@ -420,7 +382,6 @@ html, body, #root {
   color: #111827;
 }
 
-/* 错误条 */
 .error-bar {
   padding: 6px 12px;
   font-size: 12px;
@@ -428,7 +389,6 @@ html, body, #root {
   color: #fecaca;
 }
 
-/* 输入栏 */
 .input-bar {
   border-top: 1px solid var(--border-dark);
   padding: 8px 10px;
@@ -482,7 +442,6 @@ html, body, #root {
   box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
 }
 
-/* 管理后台 */
 .admin-view {
   flex: 1;
   padding: 16px 18px;
@@ -501,7 +460,6 @@ html, body, #root {
   opacity: 0.8;
 }
 
-/* Admin 顶部 Tab */
 .admin-tabs {
   display: flex;
   gap: 8px;
@@ -537,14 +495,12 @@ html, body, #root {
   opacity: 1;
 }
 
-/* 知识库管理布局：上下两块 card */
 .admin-knowledge {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* 上传区域 */
 .upload-row {
   margin-top: 8px;
   display: flex;
@@ -553,7 +509,6 @@ html, body, #root {
   font-size: 13px;
 }
 
-/* 表格样式 */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -578,7 +533,6 @@ html, body, #root {
   opacity: 0.9;
 }
 
-/* 文本按钮 */
 .link-btn {
   border: none;
   background: transparent;
@@ -596,7 +550,6 @@ html, body, #root {
   color: #f97373;
 }
 
-/* 状态小标签 */
 .badge {
   display: inline-block;
   padding: 2px 6px;
@@ -638,7 +591,6 @@ html, body, #root {
   font-size: 14px;
 }
 
-/* 设置页 */
 .settings-view {
   flex: 1;
   padding: 16px 18px;
@@ -651,7 +603,6 @@ html, body, #root {
   gap: 12px;
 }
 
-/* 登录 / 注册视图 */
 .auth-view {
   flex: 1;
   display: flex;
@@ -742,7 +693,6 @@ html, body, #root {
   cursor: pointer;
 }
 
-/* ===== ログイン種別タグ ===== */
 .login-type-tags {
   display: inline-flex;
   gap: 8px;
@@ -789,7 +739,6 @@ html, body, #root {
   opacity: 0.85;
 }
 
-/* ===== ログイン種別：カード式タグ ===== */
 .login-type-cards {
   display: flex;
   gap: 10px;
@@ -847,73 +796,18 @@ html, body, #root {
   font-weight: 600;
 }
 
-.auth-hint {
-  margin: 0 0 12px;
-  font-size: 12px;
-  opacity: 0.85;
-}
-
-/* 动画 */
 @keyframes fadeInUp {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* 响应式：小屏幕下侧边栏变抽屉 + 顶部显示 mobile-top-bar */
-@media (max-width: 768px) {
-  .app-layout {
-    flex-direction: column;
-  }
-
-  .mobile-top-bar {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-  }
-
-  .sidebar {
-    position: absolute;
-    z-index: 100;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease-out;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .main-panel {
-    min-height: 80vh;
-  }
-
-  .mobile-top-bar {
-    display: flex;
-    background: rgba(15, 23, 42, 0.9);
-  }
-
-  .top-bar {
-    display: none;
-  }
-
-  .chat-body {
-    padding: 10px 10px;
-  }
-
-  .chat-message-bubble {
-    max-width: 85%;
-  }
-}
-
-/* ===== ロール選択（カード式タグ） ===== */
 .role-card-tabs {
   display: flex;
   gap: 10px;
@@ -925,19 +819,19 @@ html, body, #root {
   text-align: left;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
   transition: 0.15s;
 }
 
 .role-card:hover {
-  background: rgba(255,255,255,0.10);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .role-card.active {
-  border-color: rgba(34,197,94,0.85);
-  box-shadow: 0 0 0 2px rgba(34,197,94,0.20) inset;
+  border-color: rgba(34, 197, 94, 0.85);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) inset;
 }
 
 .role-card-title {
@@ -978,11 +872,480 @@ html, body, #root {
   color: #ff6b6b;
 }
 
-/* エラーメッセージ */
 .auth-error {
   margin-top: 10px;
   font-size: 12px;
   color: #fecaca;
   white-space: pre-wrap;
 }
+
+.messages-view {
+  height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.messages-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.messages-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.messages-contacts {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.messages-contact-item {
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.messages-contact-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.messages-contact-name {
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.messages-contact-role {
+  font-size: 11px;
+  opacity: 0.78;
+}
+
+.messages-contact-item.active {
+  border-color: #16c47f;
+  box-shadow: 0 0 0 1px rgba(22, 196, 127, 0.4) inset;
+}
+
+.messages-thread {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.messages-thread-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.messages-thread-name {
+  word-break: break-word;
+}
+
+.messages-thread-role {
+  opacity: 0.84;
+}
+
+.messages-thread-body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.messages-thread-input {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.messages-thread-input textarea {
+  flex: 1;
+  min-height: 64px;
+  max-height: 160px;
+  resize: vertical;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.msg-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 12px;
+  background: #ff4d4f;
+  color: white;
+}
+
+.nav-badge {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+}
+
+.teacher-plain-text {
+  max-width: 75%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 2px 0;
+  background: transparent;
+  color: inherit;
+}
+
+.app-root.light .messages-contacts {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.app-root.light .messages-thread {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.app-root.light .messages-contact-item {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.app-root.light .messages-contact-item.active {
+  background: #ecfeff;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.25) inset;
+}
+
+.app-root.light .messages-thread-title {
+  color: #0f172a;
+}
+
+.app-root.light .messages-thread-body {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.app-root.light .messages-thread-input textarea {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  color: #0f172a;
+}
+
+.app-root.light .teacher-plain-text {
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .mobile-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    background: transparent;
+  }
+
+  .app-root.dark .mobile-top-bar {
+    background: rgba(15, 23, 42, 0.9);
+    border-bottom-color: var(--border-dark);
+  }
+
+  .app-root.light .mobile-top-bar {
+    background: linear-gradient(90deg, rgba(191, 219, 254, 0.75), rgba(221, 214, 254, 0.75));
+    border-bottom-color: var(--border-light);
+    color: var(--text-dark);
+  }
+
+  .sidebar {
+    position: absolute;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-panel {
+    min-height: 80vh;
+  }
+
+  .top-bar {
+    display: none;
+  }
+
+  .chat-body {
+    padding: 10px;
+  }
+
+  .chat-message-bubble {
+    max-width: 85%;
+  }
+
+  .messages-view {
+    height: auto;
+    min-height: calc(100vh - 64px);
+  }
+
+  .messages-header h2 {
+    font-size: 18px;
+  }
+
+  .messages-header p {
+    font-size: 11px;
+    line-height: 1.5;
+    margin-right: 2px;
+  }
+
+  .messages-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .messages-contacts {
+    max-height: 220px;
+  }
+
+  .messages-contact-item {
+    align-items: flex-start;
+  }
+
+  .messages-thread-title {
+    font-size: 14px;
+  }
+
+  .messages-thread-input {
+    flex-direction: column;
+  }
+
+  .messages-thread-input button {
+    width: 100%;
+  }
+}
+
+
+.code-score-view {
+  flex: 1;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.code-score-header h2 {
+  margin: 0;
+}
+
+.code-score-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.code-score-card {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(75, 85, 99, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.code-score-card textarea {
+  min-height: 180px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.code-score-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+
+.code-score-feedback {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: 14px;
+}
+
+.code-score-result ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+
+.code-score-rule-item {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: help;
+  background: rgba(15, 23, 42, 0.35);
+  outline: none;
+}
+
+
+.code-score-inline-metric {
+  display: inline-block;
+  margin: 0 4px;
+  vertical-align: baseline;
+}
+
+.code-score-inline-metric .code-score-rule-tooltip {
+  left: 50%;
+  transform: translate(-50%, -4px);
+}
+
+.code-score-inline-metric:hover .code-score-rule-tooltip,
+.code-score-inline-metric:focus-visible .code-score-rule-tooltip {
+  transform: translate(-50%, 0);
+}
+.code-score-rule-item:focus-visible {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.45);
+}
+
+.code-score-rule-key {
+  font-weight: 600;
+}
+
+.code-score-rule-tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  min-width: 260px;
+  max-width: 340px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  background: #0b1220;
+  color: #e5e7eb;
+  font-size: 12px;
+  line-height: 1.5;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  white-space: normal;
+}
+
+.code-score-rule-item:hover .code-score-rule-tooltip,
+.code-score-rule-item:focus-visible .code-score-rule-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-root.light .code-score-rule-item {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.app-root.light .code-score-rule-tooltip {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #94a3b8;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
+}
+
+@media (max-width: 768px) {
+  .code-score-rule-tooltip {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-width: none;
+  }
+}
+.app-root.light .code-score-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.app-root.light .code-score-card textarea {
+  background: #ffffff;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .code-score-view {
+    padding: 12px;
+  }
+
+  .code-score-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .code-score-card textarea {
+    min-height: 220px;
+  }
+}
+
+.code-score-submit {
+  width: 120px;
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  .code-score-submit {
+    width: 100%;
+  }
+}
+
+
+
+
 

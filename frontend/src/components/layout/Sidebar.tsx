@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Sidebar.tsx
 import React from "react";
 import logo from "../../assets/logo.png";
 
@@ -16,8 +17,12 @@ type Props = {
   isLoggedIn: boolean;
   onLogout: () => void;
 
-  // ✅ 管理者のみ管理画面を表示
-  isAdmin: boolean;
+  isTeacher: boolean;
+  teacherUnreadCount: number;
+
+  userName?: string;
+  userRoleLabel?: string;
+  userAvatar?: string;
 };
 
 const Sidebar: React.FC<Props> = ({
@@ -29,7 +34,11 @@ const Sidebar: React.FC<Props> = ({
   setSidebarOpen,
   isLoggedIn,
   onLogout,
-  isAdmin,
+  isTeacher,
+  teacherUnreadCount,
+  userName,
+  userRoleLabel,
+  userAvatar,
 }) => {
   return (
     <aside
@@ -39,9 +48,7 @@ const Sidebar: React.FC<Props> = ({
         setSidebarOpen(false);
       }}
     >
-      {/* 内側クリックで閉じないようにする */}
       <div className="sidebar-inner" onClick={(e) => e.stopPropagation()}>
-        {/* ヘッダー */}
         <div className="sidebar-header">
           <img src={logo} alt="Eden" className="sidebar-logo" />
           <div className="sidebar-title">
@@ -50,7 +57,24 @@ const Sidebar: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* ナビ */}
+        {isLoggedIn && (
+          <div
+            style={{
+              marginBottom: 10,
+              fontSize: 12,
+              opacity: 0.9,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>{userAvatar || "🙂"}</span>
+            <span>
+              {userName || "ユーザー"}（{userRoleLabel || "生徒"}）
+            </span>
+          </div>
+        )}
+
         <nav className="sidebar-nav">
           <button
             type="button"
@@ -60,11 +84,50 @@ const Sidebar: React.FC<Props> = ({
               setSidebarOpen(false);
             }}
           >
-            💬 会話
+            💬 AI会話
           </button>
 
-          {/* 管理者のみ */}
-          {isAdmin && (
+
+          <button
+            type="button"
+            className={`nav-item ${activeView === "code_score" ? "active" : ""}`}
+            onClick={() => {
+              setActiveView("code_score");
+              setSidebarOpen(false);
+            }}
+          >
+            🧪 コード採点
+          </button>
+
+          {!isTeacher && (
+            <button
+              type="button"
+              className={`nav-item ${activeView === "messages" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("messages");
+                setSidebarOpen(false);
+              }}
+            >
+              🙋 先生に質問
+            </button>
+          )}
+
+          {isTeacher && (
+            <button
+              type="button"
+              className={`nav-item ${activeView === "messages" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("messages");
+                setSidebarOpen(false);
+              }}
+              style={{ position: "relative" }}
+            >
+              📨 メッセージ
+              {teacherUnreadCount > 0 && <span className="msg-badge nav-badge">{teacherUnreadCount}</span>}
+            </button>
+          )}
+
+          {isTeacher && (
             <button
               type="button"
               className={`nav-item ${activeView === "admin" ? "active" : ""}`}
@@ -73,7 +136,7 @@ const Sidebar: React.FC<Props> = ({
                 setSidebarOpen(false);
               }}
             >
-              📊 管理画面
+              📊 人員管理
             </button>
           )}
 
@@ -89,13 +152,11 @@ const Sidebar: React.FC<Props> = ({
           </button>
         </nav>
 
-        {/* フッター */}
         <div className="sidebar-footer">
           <button type="button" className="outline-btn" onClick={toggleTheme}>
             {theme === "dark" ? "ライトへ切替" : "ダークへ切替"}
           </button>
 
-          {/* 未ログイン時は表示しない（あなたの仕様通り） */}
           {isLoggedIn && (
             <button
               type="button"
@@ -115,3 +176,8 @@ const Sidebar: React.FC<Props> = ({
 };
 
 export default Sidebar;
+
+
+
+
+

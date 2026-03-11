@@ -1,9 +1,9 @@
-# backend/tools/create_admin.py
+# Deprecated compatibility script.
+# Use: python -m app.tools.create_teacher --email ... --password ...
 
 from app.db import SessionLocal
 from app.models.user import User
 from app.services.auth_service import get_password_hash
-
 
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "123456789"
@@ -12,28 +12,31 @@ ADMIN_NAME = "Admin"
 
 def main():
     db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == ADMIN_EMAIL).first()
+        hashed = get_password_hash(ADMIN_PASSWORD)
 
-    # 检查是否存在
-    user = db.query(User).filter(User.email == ADMIN_EMAIL).first()
-    if user:
-        print("👑 管理员已存在:", user.email)
-        return
+        if user:
+            user.hashed_password = hashed
+            user.full_name = ADMIN_NAME
+            user.role = "teacher"
+            user.is_active = True
+            action = "updated"
+        else:
+            user = User(
+                email=ADMIN_EMAIL,
+                hashed_password=hashed,
+                full_name=ADMIN_NAME,
+                role="teacher",
+                is_active=True,
+            )
+            db.add(user)
+            action = "created"
 
-    # 创建管理员
-    admin = User(
-        email=ADMIN_EMAIL,
-        hashed_password=get_password_hash(ADMIN_PASSWORD),
-        full_name=ADMIN_NAME,
-        role="admin",
-        is_active=True,
-    )
-
-    db.add(admin)
-    db.commit()
-
-    print("🎉 管理员创建成功！")
-    print(f"邮箱: {ADMIN_EMAIL}")
-    print(f"密码: {ADMIN_PASSWORD}")
+        db.commit()
+        print(f"Teacher account {action}: {ADMIN_EMAIL}")
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

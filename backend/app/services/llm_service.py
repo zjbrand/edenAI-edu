@@ -1,14 +1,14 @@
+﻿import logging
 import os
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 import httpx
-from dotenv import load_dotenv
 
-from .knowledge_service import get_relevant_context  # 本地知识库
+from .knowledge_service import get_relevant_context
 
-load_dotenv()
+logger = logging.getLogger("edenai.llm")
 
-# Groq 配置
+# Groq 設定
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -34,26 +34,15 @@ def build_messages(
     history: List[Dict[str, str]],
     context: Optional[str] = None,
 ):
-    """
-    构造发送给大模型的 messages 列表
-    """
-    messages: List[Dict[str, str]] = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # 将知识库命中的内容加入到系统信息
     if context:
-        kb_block = (
-            "下面是与公司业务相关的知识库内容，请结合参考回答：\n"
-            + context
-        )
+        kb_block = "下面是与公司业务相关的知识库内容，请结合参考回答：\n" + context
         messages.append({"role": "system", "content": kb_block})
 
-    # 历史对话
     for msg in history:
         messages.append({"role": msg["role"], "content": msg["content"]})
 
-    # 当前问题
     user_content = question
     if subject:
         user_content = f"[科目: {subject}]\n{question}"
@@ -67,30 +56,19 @@ def ask_llm(
     subject: Optional[str] = None,
     history: List[Dict[str, str]] = None,
 ) -> str:
-    """
-    对外接口：
-    1. 检索知识库
-    2. 构造 prompt
-    3. 调用 Groq
-    4. 返回最终回答
-    """
     history = history or []
 
     if not GROQ_API_KEY:
         return "后端配置错误：请先在 .env 中设置 GROQ_API_KEY。"
 
-    # 1. 先查知识库
     context = get_relevant_context(question, top_k=30)
+    if context:
+        logger.debug("knowledge hit lines=%s", len(context.splitlines()))
+    else:
+        logger.debug("knowledge hit empty")
 
-    # 若你不希望终端打印调试信息，可将下方三行删掉
-    print("=== KB HIT ===")
-    print(context if context else "没有命中知识库")
-    print("==============")
-
-    # 2. 构造消息
     messages = build_messages(question, subject, history, context=context)
 
-    # 3. 组织请求
     url = GROQ_BASE_URL.rstrip("/") + "/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -102,19 +80,20 @@ def ask_llm(
         "temperature": 0.4,
     }
 
-    # 4. 调用 Groq
     try:
         with httpx.Client(timeout=60.0) as client:
             resp = client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as e:
+        logger.warning("Groq HTTP error status=%s", e.response.status_code)
         return f"调用 Groq 接口失败：HTTP {e.response.status_code}，详情：{e.response.text[:200]}"
     except Exception as e:
+        logger.exception("Groq call failed: %s", e)
         return f"调用 Groq 接口时发生错误：{e}"
 
-    # 5. 返回模型内容
     try:
         return data["choices"][0]["message"]["content"]
     except Exception as e:
+        logger.exception("Groq response parse failed: %s", e)
         return f"解析 Groq 返回内容时出错：{e}；原始响应：{data}"

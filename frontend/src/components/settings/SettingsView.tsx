@@ -8,6 +8,12 @@ type Props = {
   role: string;
 };
 
+const roleLabel = (role: string) => {
+  if (role === "teacher" || role === "admin") return "先生";
+  if (role === "student" || role === "user") return "生徒";
+  return role;
+};
+
 const SettingsView: React.FC<Props> = ({ token, email, fullName, role }) => {
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -21,7 +27,6 @@ const SettingsView: React.FC<Props> = ({ token, email, fullName, role }) => {
     setMsg(null);
     setErr(null);
 
-    // 簡易チェック
     if (!currentPw || !newPw || !newPw2) {
       setErr("入力内容を確認してください。");
       return;
@@ -57,7 +62,7 @@ const SettingsView: React.FC<Props> = ({ token, email, fullName, role }) => {
         <h3>アカウント</h3>
         <p>メール：{email}</p>
         <p>氏名：{fullName || "-"}</p>
-        <p>権限：{role}</p>
+        <p>権限：{roleLabel(role)}</p>
       </div>
 
       <div className="admin-card" style={{ marginTop: 12 }}>

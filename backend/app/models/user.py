@@ -13,10 +13,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
+    avatar = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # ✅ 新增：角色字段
-    role = Column(String, nullable=False, default="user")
-
-    # ✅ 有効/無効（ユーザー停止用）
+    role = Column(String, nullable=False, default="student")
     is_active = Column(Boolean, nullable=False, default=True)

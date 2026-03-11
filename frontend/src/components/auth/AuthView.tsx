@@ -1,8 +1,17 @@
 import React from "react";
+import type { LoginType } from "../../App";
 
-type LoginRole = "user" | "admin";
+const STUDENT_AVATARS = [
+  "🐶", "🐱", "🐰", "🐼", "🐨",
+  "🦊", "🐯", "🐸", "🐵", "🐧",
+  "🐙", "🦄", "🐻", "🐮", "🐤",
+  "🐺", "🐷", "🦁", "🐹", "🐳",
+];
 
 interface Props {
+  loginType: LoginType;
+  setLoginType: (r: LoginType) => void;
+
   authMode: "login" | "register";
   setAuthMode: (m: "login" | "register") => void;
 
@@ -15,11 +24,16 @@ interface Props {
   authName: string;
   setAuthName: (v: string) => void;
 
+  authAvatar: string;
+  setAuthAvatar: (v: string) => void;
+
   authError: string | null;
   onSubmit: (e: React.FormEvent) => void;
 }
 
 const AuthView: React.FC<Props> = ({
+  loginType,
+  setLoginType,
   authMode,
   setAuthMode,
   authEmail,
@@ -28,92 +42,87 @@ const AuthView: React.FC<Props> = ({
   setAuthPassword,
   authName,
   setAuthName,
+  authAvatar,
+  setAuthAvatar,
   authError,
   onSubmit,
 }) => {
-  const [loginRole, setLoginRole] = React.useState<LoginRole>("user");
-  const isAdmin = loginRole === "admin";
+  const isTeacher = loginType === "teacher";
 
-  // 新規登録用：パスワード確認
   const [confirmPassword, setConfirmPassword] = React.useState("");
-  // フロント側バリデーションエラー（サーバーの authError とは別）
   const [localError, setLocalError] = React.useState<string | null>(null);
 
-  // ロール/モード切替時に入力補助をリセット（最小限）
   React.useEffect(() => {
     setLocalError(null);
     if (authMode !== "register") setConfirmPassword("");
-  }, [authMode]);
+  }, [authMode, loginType]);
 
-  const handleRoleChange = (role: LoginRole) => {
-    // ロール切替：エラー表示をリセット
+  const handleRoleChange = (role: LoginType) => {
     setLocalError(null);
 
-    if (role === "admin") {
-      // 管理者：登録不可（ログインのみ）
-      setLoginRole("admin");
+    if (role === "teacher") {
+      setLoginType("teacher");
       setAuthMode("login");
       setConfirmPassword("");
       return;
     }
 
-    // 一般ユーザー
-    setLoginRole("user");
+    setLoginType("student");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    // フロント側で新規登録の最低限チェック
     setLocalError(null);
 
-    if (!isAdmin && authMode === "register") {
-      // 新規登録：パスワード一致チェック
+    if (!isTeacher && authMode === "register") {
       if (authPassword !== confirmPassword) {
         e.preventDefault();
         setLocalError("パスワードが一致しません。もう一度確認してください。");
         return;
       }
-      // 任意：空文字防止（念のため）
       if (!authPassword || !confirmPassword) {
         e.preventDefault();
         setLocalError("パスワードを入力してください。");
         return;
       }
+      if (!authAvatar) {
+        e.preventDefault();
+        setLocalError("アバターを選択してください。");
+        return;
+      }
     }
 
-    // 既存の処理（App 側）へ委譲
     onSubmit(e);
   };
 
   return (
     <div className="auth-view">
       <div className="auth-card">
-        {/* ロール選択（カード式タグ） */}
         <div className="role-card-tabs">
           <button
             type="button"
-            className={`role-card ${loginRole === "user" ? "active" : ""}`}
-            onClick={() => handleRoleChange("user")}
+            className={`role-card ${loginType === "student" ? "active" : ""}`}
+            onClick={() => handleRoleChange("student")}
           >
-            <div className="role-card-title">一般ユーザー</div>
+            <div className="role-card-title">生徒</div>
             <div className="role-card-sub">会話機能を利用</div>
           </button>
 
           <button
             type="button"
-            className={`role-card ${loginRole === "admin" ? "active" : ""}`}
-            onClick={() => handleRoleChange("admin")}
+            className={`role-card ${loginType === "teacher" ? "active" : ""}`}
+            onClick={() => handleRoleChange("teacher")}
           >
-            <div className="role-card-title">管理者</div>
+            <div className="role-card-title">先生</div>
             <div className="role-card-sub">管理画面を利用</div>
           </button>
         </div>
 
         <h2 className="auth-title">
-          {isAdmin ? "管理者ログイン" : authMode === "login" ? "ログイン" : "新規登録"}
+          {isTeacher ? "先生ログイン" : authMode === "login" ? "ログイン" : "新規登録"}
         </h2>
 
-        {isAdmin ? (
-          <p className="auth-hint">管理者アカウントは事前作成済み（登録不可）</p>
+        {isTeacher ? (
+          <p className="auth-hint">先生アカウントは事前作成済み（登録不可）</p>
         ) : authMode === "login" ? (
           <p className="auth-hint">メールアドレスとパスワードでログインしてください</p>
         ) : (
@@ -121,18 +130,44 @@ const AuthView: React.FC<Props> = ({
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* 一般ユーザーの新規登録のみ氏名を表示 */}
-          {!isAdmin && authMode === "register" && (
-            <div className="form-group">
-              <label>氏名</label>
-              <input
-                type="text"
-                value={authName}
-                onChange={(e) => setAuthName(e.target.value)}
-                placeholder="例）山田 太郎"
-                autoComplete="name"
-              />
-            </div>
+          {!isTeacher && authMode === "register" && (
+            <>
+              <div className="form-group">
+                <label>氏名</label>
+                <input
+                  type="text"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="例）山田 太郎"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>アバター</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {STUDENT_AVATARS.map((a, idx) => (
+                    <button
+                      key={`${a}-${idx}`}
+                      type="button"
+                      onClick={() => setAuthAvatar(a)}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 999,
+                        border: authAvatar === a ? "2px solid #16c47f" : "1px solid rgba(255,255,255,0.25)",
+                        background: "transparent",
+                        color: "inherit",
+                        cursor: "pointer",
+                        fontSize: 18,
+                      }}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="form-group">
@@ -157,8 +192,7 @@ const AuthView: React.FC<Props> = ({
             />
           </div>
 
-          {/* 新規登録のみ：パスワード（確認） */}
-          {!isAdmin && authMode === "register" && (
+          {!isTeacher && authMode === "register" && (
             <div className="form-group">
               <label>パスワード（確認）</label>
               <input
@@ -172,18 +206,14 @@ const AuthView: React.FC<Props> = ({
           )}
 
           <button type="submit" className="primary-btn full-width">
-            {isAdmin ? "管理者としてログイン" : authMode === "login" ? "ログイン" : "登録"}
+            {isTeacher ? "先生としてログイン" : authMode === "login" ? "ログイン" : "登録"}
           </button>
         </form>
 
-        {/* フロント側バリデーションエラー */}
         {localError && <div className="auth-error">{localError}</div>}
-
-        {/* サーバー側エラー（従来通り） */}
         {authError && <div className="auth-error">{authError}</div>}
 
-        {/* 管理者は登録不可なので切替リンクを出さない */}
-        {!isAdmin && (
+        {!isTeacher && (
           <div className="auth-switch">
             {authMode === "login" ? (
               <button
@@ -214,3 +244,4 @@ const AuthView: React.FC<Props> = ({
 };
 
 export default AuthView;
+

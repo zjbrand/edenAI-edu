@@ -1,46 +1,80 @@
 // src/lib/api.ts
-// ローカル開発用
-const LOCAL_API = "http://127.0.0.1:8000";
+const API_BASE_FROM_ENV = import.meta.env.VITE_API_BASE as string | undefined;
 
-// Render 本番用バックエンド
-const REMOTE_API = "https://edenai-teacher-3.onrender.com";
+function resolveApiBase(): string {
+  if (API_BASE_FROM_ENV && API_BASE_FROM_ENV.trim().length > 0) {
+    return API_BASE_FROM_ENV.trim();
+  }
 
-// 実行環境を見て BASE URL を決める
-// - onrender.com ドメインなら REMOTE_API（＝Render）
-// - それ以外（localhost など）なら LOCAL_API
-export const API_BASE =
-  typeof window !== "undefined" &&
-  window.location.hostname.endsWith("onrender.com")
-    ? REMOTE_API
-    : LOCAL_API;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://127.0.0.1:8000";
+    }
+    return window.location.origin;
+  }
 
-export async function apiRegister(email: string, password: string, fullName?: string | null) {
+  return "http://127.0.0.1:8000";
+}
+
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    if (typeof data?.detail === "string" && data.detail.trim()) {
+      return data.detail;
+    }
+  } catch {
+    // JSON でないエラー本文は次で吸収する
+  }
+
+  try {
+    const text = await res.text();
+    if (text.trim()) return text;
+  } catch {
+    // 本文が取れない場合は fallback を返す
+  }
+
+  return fallback;
+}
+
+export const API_BASE = resolveApiBase();
+
+export async function apiRegister(
+  email: string,
+  password: string,
+  fullName?: string | null,
+  avatar?: string | null,
+) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, full_name: fullName ?? null }),
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: fullName ?? null,
+      avatar: avatar ?? null,
+    }),
   });
-  if (!res.ok) throw new Error(`注册失败: ${await res.text()}`);
+  if (!res.ok) {
+    const msg = await readApiError(res, "登録に失敗しました。");
+    throw new Error(`登録失敗: ${msg}`);
+  }
 }
 
 export async function apiLogin(email: string, password: string): Promise<string> {
-  // ★ FastAPI 側が OAuth2PasswordRequestForm を期待している前提（username/password）
-  // ★ username に email を入れて送る
   const body = new URLSearchParams();
   body.set("username", email);
   body.set("password", password);
 
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`ログイン失敗: ${text}`);
+    const msg = await readApiError(res, "ログインに失敗しました。");
+    throw new Error(`ログイン失敗: ${msg}`);
   }
 
   const data = await res.json();
@@ -75,10 +109,10 @@ export type MeResponse = {
   id: number;
   email: string;
   full_name: string | null;
-  role: "user" | "admin" | string;
+  avatar: string | null;
+  role: "student" | "teacher" | "user" | "admin" | string;
 };
 
-// ログイン中ユーザー情報
 export async function apiMe(token: string): Promise<MeResponse> {
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -87,7 +121,6 @@ export async function apiMe(token: string): Promise<MeResponse> {
   return res.json();
 }
 
-// パスワード変更
 export async function apiChangePassword(
   token: string,
   currentPassword: string,

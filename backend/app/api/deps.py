@@ -44,12 +44,13 @@ def get_current_user(
 
 def require_admin(current_user: User = Depends(get_current_user)):
     """
-    管理员权限校验
+    先生（teacher）権限校验
+    兼容旧数据中的 admin 角色
     """
-    if current_user.role != "admin":
+    if current_user.role not in ("teacher", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限",
+            detail="先生権限が必要です",
         )
 
     return {

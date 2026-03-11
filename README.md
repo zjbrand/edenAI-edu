@@ -1,260 +1,202 @@
-# EdenAI Teacher
+﻿# EdenAI Teacher
 
-**EdenAI Teacher** は、  
-学習者が質問を投げかけると AI がわかりやすく回答してくれる  
-**AI学習アシスタント Web アプリケーション**です。
+EdenAI Teacher is an AI tutoring web app for programming learning.
+It supports question answering with chat history and organization knowledge documents.
 
-企業紹介・社内ナレッジ文書などを知識ベースとして登録し、  
-自然言語で検索・回答できることを目的としています。
+## Tech Stack
 
----
+- Frontend: React + Vite + TypeScript
+- Backend: FastAPI + SQLAlchemy
+- DB: PostgreSQL (recommended for production), SQLite (local quick start)
+- LLM: Groq OpenAI-compatible API
 
-## 🌐 デモ環境
+## Core Features
 
-| 種別 | URL |
-|------|----|
-| フロントエンド | https://edenai-teacher-2.onrender.com |
-| バックエンド API | https://edenai-teacher-3.onrender.com|
+- Student login/register and chat Q&A
+- Teacher-only admin panel
+- Knowledge docs upload/list/delete/reload (`.txt/.md/.markdown`)
+- User activation and role management (`student`/`teacher`)
 
-※ Render 上で稼働
+## Knowledge Source Behavior
 
----
+Knowledge is loaded from two possible sources:
 
-## 🏗 アーキテクチャ
+- DB knowledge (`knowledge_docs` table)
+- Static files (`backend/app/data/company_docs`)
 
-本プロジェクトは **フロントエンド／バックエンド分離構成** です。
+Behavior is controlled by env vars:
 
-### Frontend
-- Vite + React + TypeScript
-- UIレンダリング & API呼び出し
-- JWT によるログイン対応
-- Static Site として Render にデプロイ
+- `KNOWLEDGE_ENABLE_DB` (default: `true`)
+- `KNOWLEDGE_ENABLE_STATIC` (default: `true` in development, `false` in production)
+- `KNOWLEDGE_STATIC_DIR` (optional custom directory)
 
-### Backend
-- FastAPI (Python)
-- OpenAI/Groq 互換 LLM API を使用
-- Chat履歴対応
-- JWT認証機能
-- PostgreSQL による永続化
-- Render Web Service としてデプロイ
+Recommended for VPS production:
 
----
+- `KNOWLEDGE_ENABLE_DB=true`
+- `KNOWLEDGE_ENABLE_STATIC=false`
 
-## 📚 ナレッジベース機能
+## Project Structure
 
-以下をサポートしています：
+- `frontend/`: SPA source and build artifacts
+- `backend/app/`: API, services, models
+- `backend/tools/`: utility scripts
+- `deploy/`: Sakura VPS deployment templates (nginx + systemd)
 
-✔ `TXT / MD` 文書を DB に保存  
-✔ 行単位でキャッシュ  
-✔ 質問文章を正規化  
-✔ 関連行をスコアリング  
-✔ 回答の前提コンテキストとして LLM に付与  
+## Local Development
 
-例：
+### 1) Backend
 
-
-→ DBの知識から
-
-
-を抽出し回答します。
-
----
-
-## 🧠 主な機能
-
-### 👤 ユーザー管理
-- 新規登録
-- ログイン
-- JWT認証
-
-### 💬 チャット形式 Q&A
-- 履歴付き
-- 教科（subject）指定可能
-
-### 📁 ナレッジ管理（管理者向け）
-- 文書登録
-- DB 保存
-- 状態管理（active など）
-
----
-
-## 🗄 データベース
-
-現在使用：
-
-- PostgreSQL（Render）
-- SQLAlchemy ORM
-
-主なテーブル
-
-| テーブル | 用途 |
-|--------|----|
-| `users` | ユーザー管理 |
-| `knowledge_docs` | ナレッジ文書 |
-
----
-
-## 🛠 ローカル開発手順
-
-### Backend
-
+```bash
 cd backend
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux/macOS
+source .venv/bin/activate
+
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+cp .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
+### 2) Frontend
 
-http://127.0.0.1:8000
-
-
----
-
-### Frontend
-
-
-
+```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
+```
 
-デフォルト：
+- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://127.0.0.1:8000`
 
-http://127.0.0.1:5173
+## Environment Variables
 
-yaml
-コードをコピーする
+### Backend (`backend/.env`)
 
----
+Required for production:
 
-## 🔐 環境変数
+- `JWT_SECRET_KEY`
+- `DATABASE_URL`
+- `GROQ_API_KEY`
+- `CORS_ORIGINS` (comma-separated)
+- `TRUSTED_HOSTS` (comma-separated, e.g. `your-domain.example`)
 
-### Backend
+Optional:
 
-| 変数名 | 説明 |
-|------|----|
-| `DATABASE_URL` | PostgreSQL URL |
-| `GROQ_API_KEY` | LLM APIキー |
+- `APP_NAME` 
+- `ENABLE_DOCS` (default false in production) 
+- `LOG_LEVEL`
+- `ENV`
+- `ACCESS_TOKEN_EXPIRE_MINUTES`
+- `ALLOW_PLAINTEXT_PASSWORD_COMPAT` (default `false`; keep `false` in production)
+- `KNOWLEDGE_ENABLE_DB`
+- `KNOWLEDGE_ENABLE_STATIC`
+- `KNOWLEDGE_STATIC_DIR`
+- `GROQ_BASE_URL`
+- `GROQ_MODEL`
 
----
+### Frontend (`frontend/.env`)
 
-### Frontend
+- `VITE_API_BASE`
+  - leave empty to use same-origin (recommended with Nginx reverse proxy)
+  - set explicit URL only when frontend/backend are on different origins
 
-`frontend/.env.production`
+## Create Teacher Account
 
-VITE_API_BASE=https://edenai-teacher.onrender.com
+Use the script after DB is ready:
 
-yaml
-コードをコピーする
+```bash
+cd backend
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python tools/create_teacher.py --email admin@example.com --password 123456789 --full-name Admin
+```
 
----
+## Deploy to Sakura VPS (Recommended Flow)
 
-## 🚀 デプロイ
+### 1) Server packages
 
-### Backend（Render Web Service）
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip nginx nodejs npm git
+```
 
-- Root: `backend`
-- Build:
+### 2) App placement
+
+```bash
+sudo mkdir -p /opt/edenai-teacher
+sudo chown -R $USER:$USER /opt/edenai-teacher
+cd /opt/edenai-teacher
+git clone <your-repo-url> .
+```
+
+### 3) Backend setup
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+# edit .env for production values
+```
 
-diff
-コードをコピーする
-- Start:
-uvicorn app.main:app --host 0.0.0.0 --port 10000
+### 4) Frontend build
 
-yaml
-コードをコピーする
+```bash
+cd /opt/edenai-teacher/frontend
+cp .env.example .env
+# keep VITE_API_BASE empty for same-origin mode
+npm ci
+npm run build
+```
 
----
+### 5) systemd service
 
-### Frontend（Render Static Site）
+```bash
+sudo cp /opt/edenai-teacher/deploy/systemd/edenai-backend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now edenai-backend
+sudo systemctl status edenai-backend
+```
 
-- Root: `frontend`
-- Build:
-npm install && npm run build
+### 6) Nginx
 
-yaml
-コードをコピーする
-- Publish: `dist`
+```bash
+sudo cp /opt/edenai-teacher/deploy/nginx/edenai.conf /etc/nginx/sites-available/edenai.conf
+sudo ln -s /etc/nginx/sites-available/edenai.conf /etc/nginx/sites-enabled/edenai.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
 
----
+### 7) TLS
 
-## 🔄 ナレッジキャッシュ
+Use certbot after DNS is ready.
 
-起動時：
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.example
+```
 
-reload_knowledge_cache()
 
-yaml
-コードをコピーする
+### 8) Optional: Scheduled DB backup (recommended) 
 
-が自動実行されます。
+```bash
+sudo cp /opt/edenai-teacher/deploy/systemd/edenai-db-backup.service /etc/systemd/system/
+sudo cp /opt/edenai-teacher/deploy/systemd/edenai-db-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now edenai-db-backup.timer
+systemctl list-timers | grep edenai-db-backup
+``` 
 
-- DB
-- 静的ファイル
+## Security Notes
 
-→ 両方ロード
-
----
-
-## 📂 注意点
-
-- `backend/tools/`
-  - SQLite → PostgreSQL 移行ツール
-  - 開発用スクリプト
-  - 本番では未使用
-
----
-
-## 🎯 目的と背景
-
-- IT教材用 AI システムとして設計
-- 日本語対応
-- 少人数企業・教育向け
-- ナレッジ検索機能強化
-
----
-
-## 🧑‍💻 技術スタック
-
-### Backend
-- Python 3
-- FastAPI
-- SQLAlchemy
-- JWT
-- LLM API
-
-### Frontend
-- React
-- Vite
-- TypeScript
-- Fetch API
-
-### Infra
-- Render
-- PostgreSQL
-
----
-
-## 🚧 今後の改善予定
-
-- 管理画面UI改善
-- ナレッジ検索精度向上
-- ドキュメントアップロード強化
-- マルチユーザー権限
-
----
-
-## 📜 ライセンス
-
-個人開発・学習目的  
-※ 商用利用時は調整予定
-
----
-
-## 🙏 作者
-
-中国出身・日本在住  
-ITエンジニア × AI学習者
-
-学習しながら成長するアプリを目指しています 😊
+- Always use a strong `JWT_SECRET_KEY`
+- Keep `ALLOW_PLAINTEXT_PASSWORD_COMPAT=false` in production
+- Restrict `CORS_ORIGINS` to your real domain(s)
+- Set `TRUSTED_HOSTS` to your real domain(s), never `*` in production
+- Keep `ENABLE_DOCS=false` in production unless temporary troubleshooting is needed
+- Store DB and API credentials only in `.env` on server
 
 

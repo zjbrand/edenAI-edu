@@ -6,33 +6,33 @@ import ChatView from "./components/chat/ChatView";
 import AuthView from "./components/auth/AuthView";
 import AdminView, { type AdminTab } from "./components/admin/AdminView";
 import SettingsView from "./components/settings/SettingsView";
+import MessagesView from "./components/messages/MessagesView";
+import CodeScoreView from "./components/code-score/CodeScoreView";
 
 import type { Message, View, Theme, AuthMode } from "./types";
 import { apiAsk, apiLogin, apiRegister, apiMe } from "./lib/api";
+import { apiUnreadCount } from "./api/messages";
 import type { MeResponse } from "./lib/api";
 
-/**
- * ログイン種別
- * - user: 一般ユーザー
- * - admin: 管理者
- */
-export type LoginType = "user" | "admin";
+export type LoginType = "student" | "teacher";
+
+const roleLabel = (role: string | undefined) => {
+  if (role === "teacher" || role === "admin") return "先生";
+  return "生徒";
+};
 
 const App: React.FC = () => {
-  // ================= チャット関連 =================
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState("プログラミング");
   const [error, setError] = useState<string | null>(null);
 
-  // ================= UI / レイアウト =================
   const [activeView, setActiveView] = useState<View>("chat");
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [adminTab, setAdminTab] = useState<AdminTab>("knowledge");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ================= 認証関連 =================
   const [token, setToken] = useState<string | null>(() =>
     typeof window !== "undefined" ? localStorage.getItem("eden_token") : null
   );
@@ -40,26 +40,26 @@ const App: React.FC = () => {
     typeof window !== "undefined" ? !!localStorage.getItem("eden_token") : false
   );
 
-  // 🔖 ログイン種別（タグで切替）
-  const [loginType, setLoginType] = useState<LoginType>("user");
+  const [loginType, setLoginType] = useState<LoginType>("student");
 
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
+  const [authAvatar, setAuthAvatar] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // ✅ ログインユーザー情報
   const [me, setMe] = useState<MeResponse | null>(null);
-  const isAdmin = me?.role === "admin";
+  const [teacherUnreadCount, setTeacherUnreadCount] = useState(0);
 
-  // ================= テーマ切替 =================
+  const isTeacher = me?.role === "teacher" || me?.role === "admin";
+
   const toggleTheme = () => setTheme((p) => (p === "dark" ? "light" : "dark"));
 
-  // ================= 初期化：token があれば /me を叩く =================
   useEffect(() => {
     if (!token) {
       setMe(null);
+      setTeacherUnreadCount(0);
       return;
     }
 
@@ -68,7 +68,6 @@ const App: React.FC = () => {
         const meData = await apiMe(token);
         setMe(meData);
       } catch {
-        // token が古い / 不正ならログアウト扱い
         setMe(null);
         setIsLoggedIn(false);
         setToken(null);
@@ -77,7 +76,26 @@ const App: React.FC = () => {
     })();
   }, [token]);
 
-  // ================= メッセージ送信 =================
+  useEffect(() => {
+    if (!token || !isTeacher) {
+      setTeacherUnreadCount(0);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const count = await apiUnreadCount(token);
+        setTeacherUnreadCount(count);
+      } catch {
+        // 取得失敗時は次回ポーリングで再取得
+      }
+    };
+
+    load();
+    const id = window.setInterval(load, 5000);
+    return () => window.clearInterval(id);
+  }, [token, isTeacher]);
+
   const handleSend = async () => {
     const trimmed = question.trim();
     if (!trimmed || loading) return;
@@ -109,37 +127,31 @@ const App: React.FC = () => {
     }
   };
 
-  // ================= ログイン / 登録 =================
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
-    // 管理者は登録不可
-    if (loginType === "admin" && authMode === "register") {
-      setAuthError("管理者アカウントは登録できません。");
+    if (loginType === "teacher" && authMode === "register") {
+      setAuthError("先生アカウントは登録できません。");
       return;
     }
 
     try {
-      // 一般ユーザーのみ登録可能
-      if (loginType === "user" && authMode === "register") {
-        await apiRegister(authEmail, authPassword, authName || null);
+      if (loginType === "student" && authMode === "register") {
+        await apiRegister(authEmail, authPassword, authName || null, authAvatar || null);
       }
 
-      // ログイン
       const accessToken = await apiLogin(authEmail, authPassword);
       setToken(accessToken);
       setIsLoggedIn(true);
       localStorage.setItem("eden_token", accessToken);
 
-      // ✅ ログイン直後に /me を取得して role を確定
       const meData = await apiMe(accessToken);
       setMe(meData);
 
-      // ログイン後の遷移
-      if (loginType === "admin") {
-        if (meData.role !== "admin") {
-          setAuthError("管理者権限がありません。");
+      if (loginType === "teacher") {
+        if (meData.role !== "teacher" && meData.role !== "admin") {
+          setAuthError("先生権限がありません。");
           localStorage.removeItem("eden_token");
           setIsLoggedIn(false);
           setToken(null);
@@ -162,22 +174,23 @@ const App: React.FC = () => {
     setIsLoggedIn(false);
     setToken(null);
     setMe(null);
+    setTeacherUnreadCount(0);
     localStorage.removeItem("eden_token");
 
     setAuthMode("login");
-    setLoginType("user");
+    setLoginType("student");
+    setAuthAvatar("");
     setActiveView("chat");
     setSidebarOpen(false);
     setMessages([]);
   };
 
-  // ================= メイン描画 =================
   const renderMainContent = () => {
     if (!isLoggedIn) {
       return (
         <AuthView
-          //loginType={loginType}
-          //setLoginType={setLoginType}
+          loginType={loginType}
+          setLoginType={setLoginType}
           authMode={authMode}
           setAuthMode={setAuthMode}
           authEmail={authEmail}
@@ -186,32 +199,10 @@ const App: React.FC = () => {
           setAuthPassword={setAuthPassword}
           authName={authName}
           setAuthName={setAuthName}
+          authAvatar={authAvatar}
+          setAuthAvatar={setAuthAvatar}
           authError={authError}
           onSubmit={handleAuthSubmit}
-        />
-      );
-    }
-
-    // 管理者以外が admin を開こうとしたら chat に戻す
-    if (activeView === "admin" && !isAdmin) {
-      return (
-        <ChatView
-          theme={theme}
-          toggleTheme={toggleTheme}
-          subject={subject}
-          setSubject={setSubject}
-          messages={messages}
-          question={question}
-          setQuestion={setQuestion}
-          loading={loading}
-          error={error}
-          onSend={handleSend}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
         />
       );
     }
@@ -220,24 +211,29 @@ const App: React.FC = () => {
       return <AdminView token={token!} adminTab={adminTab} setAdminTab={setAdminTab} />;
     }
 
-    // ✅ ここが今回のポイント：設定画面を表示する
-    if (activeView === "settings") {
-      // me がまだ取得できてない場合の保険
-      const email = me?.email ?? "";
-      const fullName = me?.full_name ?? null;
-      const role = me?.role ?? "user";
-
+    if (activeView === "messages") {
       return (
-        <SettingsView
+        <MessagesView
           token={token ?? ""}
-          email={email}
-          fullName={fullName}
-          role={role}
+          myUserId={me?.id ?? 0}
+          isTeacher={!!isTeacher}
+          onUnreadChanged={setTeacherUnreadCount}
         />
       );
     }
 
-    // chat
+    if (activeView === "code_score") {
+      return <CodeScoreView token={token ?? ""} />;
+    }
+
+    if (activeView === "settings") {
+      const email = me?.email ?? "";
+      const fullName = me?.full_name ?? null;
+      const role = me?.role ?? "student";
+
+      return <SettingsView token={token ?? ""} email={email} fullName={fullName} role={role} />;
+    }
+
     return (
       <ChatView
         theme={theme}
@@ -268,19 +264,21 @@ const App: React.FC = () => {
           toggleTheme={toggleTheme}
           activeView={activeView}
           setActiveView={(v) => {
-            // 管理者以外は admin へ遷移させない
-            if (v === "admin" && !isAdmin) return;
+            if (v === "admin" && !isTeacher) return;
             setActiveView(v);
           }}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           isLoggedIn={isLoggedIn}
           onLogout={handleLogout}
-          isAdmin={!!isAdmin}
+          isTeacher={!!isTeacher}
+          teacherUnreadCount={teacherUnreadCount}
+          userName={me?.full_name || me?.email}
+          userRoleLabel={roleLabel(me?.role)}
+          userAvatar={me?.avatar || ""}
         />
 
         <main className="main-panel">
-          {/* 手机端顶部栏：768px 以下才显示（由 CSS 控制 display） */}
           <div className="mobile-top-bar">
             <button className="menu-btn" onClick={() => setSidebarOpen((v) => !v)}>
               ☰
@@ -292,14 +290,14 @@ const App: React.FC = () => {
           {renderMainContent()}
 
           {sidebarOpen && (
-             <div
-               onClick={() => setSidebarOpen(false)}
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.35)",
-                  zIndex: 20,
-               }}
+            <div
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.35)",
+                zIndex: 20,
+              }}
             />
           )}
         </main>
@@ -309,3 +307,8 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+
+
+
