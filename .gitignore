@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .env
 venv/
+.venv/
 backend/venv/
 
 # Node
@@ -20,3 +21,6 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
+
+# logs
+*.log
