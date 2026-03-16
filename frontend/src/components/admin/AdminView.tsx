@@ -1,4 +1,4 @@
-// frontend/src/components/admin/AdminView.tsx
+﻿// frontend/src/components/admin/AdminView.tsx
 import React, { useEffect, useState } from "react";
 import {
   fetchSystemStatus,
@@ -38,6 +38,9 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [users, setUsers] = useState<AdminUser[]>([]);
+
+  const llmServiceStatus = status?.services?.llm ?? (status?.services?.api === "ok" ? "ok" : "ng");
+  const vectorServiceStatus = status?.services?.vector_store ?? (status?.services?.db === "ok" ? "ok" : "ng");
   const [usersErr, setUsersErr] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
 
@@ -314,15 +317,15 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
 
             <div className="status-card">
               <div className="status-title">LLM サービス</div>
-              <div className={`status-value ${status?.services?.llm === "ok" ? "status-ok" : "status-ng"}`}>
-                {status?.services?.llm === "ok" ? "稼働中" : "停止"}
+              <div className={`status-value ${llmServiceStatus === "ok" ? "status-ok" : "status-ng"}`}>
+                {llmServiceStatus === "ok" ? "稼働中" : "停止"}
               </div>
             </div>
 
             <div className="status-card">
               <div className="status-title">ナレッジ検索</div>
-              <div className={`status-value ${status?.services?.vector_store === "ok" ? "status-ok" : "status-ng"}`}>
-                {status?.services?.vector_store === "ok" ? "正常" : "異常"}
+              <div className={`status-value ${vectorServiceStatus === "ok" ? "status-ok" : "status-ng"}`}>
+                {vectorServiceStatus === "ok" ? "正常" : "異常"}
               </div>
             </div>
           </div>
@@ -356,6 +359,8 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
 };
 
 export default AdminView;
+
+
 
 
 

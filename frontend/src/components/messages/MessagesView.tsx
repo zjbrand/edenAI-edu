@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   apiGetConversation,
   apiListConversations,
@@ -91,6 +91,7 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
         full_name?: string | null;
         avatar?: string | null;
         role: string;
+        is_active?: boolean;
         unread_count: number;
       }
     >();
@@ -102,6 +103,7 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
         full_name: c.full_name,
         avatar: c.avatar,
         role: c.role,
+        is_active: c.is_active,
         unread_count: c.unread_count,
       });
     }
@@ -115,16 +117,30 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
             full_name: t.full_name,
             avatar: t.avatar,
             role: "teacher",
+            is_active: true,
             unread_count: 0,
           });
         }
       }
     }
 
-    return Array.from(map.values());
-  }, [conversations, teachers, isTeacher]);
+    const contacts = Array.from(map.values());
+    return contacts.filter((c) => {
+      if (c.user_id === myUserId) return false;
+      if (c.is_active === false) return false;
+      if (isTeacher) return !isTeacherRole(c.role);
+      return isTeacherRole(c.role);
+    });
+  }, [conversations, teachers, isTeacher, myUserId]);
 
   const selectedContact = mergedContacts.find((x) => x.user_id === selectedUserId) || null;
+
+  useEffect(() => {
+    if (selectedUserId && !mergedContacts.some((x) => x.user_id === selectedUserId)) {
+      setSelectedUserId(null);
+      setThread([]);
+    }
+  }, [mergedContacts, selectedUserId]);
 
   const onSelectContact = async (partnerId: number) => {
     setSelectedUserId(partnerId);

@@ -13,6 +13,7 @@ export type ConversationItem = {
   full_name?: string | null;
   avatar?: string | null;
   role: string;
+  is_active?: boolean;
   last_message: string;
   last_at: string;
   unread_count: number;

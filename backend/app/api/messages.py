@@ -51,6 +51,7 @@ class ConversationItem(BaseModel):
     full_name: str | None = None
     avatar: str | None = None
     role: str
+    is_active: bool = True
     last_message: str
     last_at: str
     unread_count: int
@@ -126,43 +127,52 @@ def list_conversations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(DirectMessage)
-        .filter(
-            or_(
-                DirectMessage.sender_id == current_user.id,
-                DirectMessage.recipient_id == current_user.id,
-            )
+    # 先生は生徒一覧、生徒は先生一覧を表示（未対話ユーザーも表示）
+    if _is_teacher(current_user.role):
+        targets = (
+            db.query(User)
+            .filter(User.is_active == True)  # noqa: E712
+            .filter(User.role.in_(["student", "user"]))
+            .order_by(User.created_at.desc())
+            .all()
         )
-        .order_by(DirectMessage.created_at.desc())
-        .all()
-    )
+    else:
+        targets = (
+            db.query(User)
+            .filter(User.is_active == True)  # noqa: E712
+            .filter(User.role.in_(["teacher", "admin"]))
+            .order_by(User.created_at.desc())
+            .all()
+        )
 
-    if not rows:
-        return []
-
-    partner_ids: set[int] = set()
-    for r in rows:
-        partner_ids.add(r.recipient_id if r.sender_id == current_user.id else r.sender_id)
-
-    users = db.query(User).filter(User.id.in_(partner_ids)).all()
-    user_map = {u.id: u for u in users}
-
-    # 新しい順に、各相手の先頭1件を最終メッセージとして採用
-    conv_map: dict[int, ConversationItem] = {}
-    for r in rows:
-        partner_id = r.recipient_id if r.sender_id == current_user.id else r.sender_id
-        if partner_id in conv_map:
+    result: list[ConversationItem] = []
+    for u in targets:
+        if u.id == current_user.id:
             continue
-        u = user_map.get(partner_id)
-        if not u:
-            continue
+
+        last = (
+            db.query(DirectMessage)
+            .filter(
+                or_(
+                    and_(
+                        DirectMessage.sender_id == current_user.id,
+                        DirectMessage.recipient_id == u.id,
+                    ),
+                    and_(
+                        DirectMessage.sender_id == u.id,
+                        DirectMessage.recipient_id == current_user.id,
+                    ),
+                )
+            )
+            .order_by(DirectMessage.created_at.desc())
+            .first()
+        )
 
         unread_count = (
             db.query(DirectMessage)
             .filter(
                 and_(
-                    DirectMessage.sender_id == partner_id,
+                    DirectMessage.sender_id == u.id,
                     DirectMessage.recipient_id == current_user.id,
                     DirectMessage.is_read == False,  # noqa: E712
                 )
@@ -170,18 +180,24 @@ def list_conversations(
             .count()
         )
 
-        conv_map[partner_id] = ConversationItem(
-            user_id=u.id,
-            email=u.email,
-            full_name=u.full_name,
-            avatar=u.avatar,
-            role=u.role,
-            last_message=r.content,
-            last_at=r.created_at.isoformat(),
-            unread_count=unread_count,
+        result.append(
+            ConversationItem(
+                user_id=u.id,
+                email=u.email,
+                full_name=u.full_name,
+                avatar=u.avatar,
+                role=u.role,
+                is_active=bool(u.is_active),
+                last_message=last.content if last else "",
+                last_at=last.created_at.isoformat() if last else "",
+                unread_count=unread_count,
+            )
         )
 
-    return list(conv_map.values())
+    # 最終メッセージがある相手を上に、未対話は後ろ（対話済みは新しい順）
+    result.sort(key=lambda x: x.last_at, reverse=True)
+    result.sort(key=lambda x: x.last_at == "")
+    return result
 
 
 @router.get("/conversations/{partner_id}", response_model=List[MessageItem])

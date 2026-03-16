@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=ubuntu
+Group=ubuntu
 WorkingDirectory=/opt/edenai-teacher/backend
 EnvironmentFile=/opt/edenai-teacher/backend/.env
 Environment=PYTHONUNBUFFERED=1
