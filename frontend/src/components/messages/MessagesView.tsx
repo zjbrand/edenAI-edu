@@ -3,11 +3,13 @@ import {
   apiGetConversation,
   apiListConversations,
   apiListTeachers,
+  apiListUnansweredMessages,
   apiMarkConversationRead,
   apiSendDirectMessage,
   type ConversationItem,
   type DirectMessageItem,
   type TeacherItem,
+  type UnansweredMessageItem,
 } from "../../api/messages";
 
 type Props = {
@@ -15,16 +17,29 @@ type Props = {
   myUserId: number;
   isTeacher: boolean;
   onUnreadChanged?: (count: number) => void;
+  messageEventVersion?: number;
 };
 
 const displayName = (u: { full_name?: string | null; email: string }) => u.full_name || u.email;
 const isTeacherRole = (role: string) => role === "teacher" || role === "admin";
 const roleLabel = (role: string) => (isTeacherRole(role) ? "先生" : "生徒");
+const unansweredStudentName = (item: UnansweredMessageItem) => item.student_name || item.student_email;
 
-const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadChanged }) => {
+const MessagesView: React.FC<Props> = ({
+  token,
+  myUserId,
+  isTeacher,
+  onUnreadChanged,
+  messageEventVersion = 0,
+}) => {
   const [teachers, setTeachers] = useState<TeacherItem[]>([]);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [unansweredItems, setUnansweredItems] = useState<UnansweredMessageItem[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUnansweredId, setSelectedUnansweredId] = useState<number | null>(null);
+  const [activePanel, setActivePanel] = useState<"conversation" | "unanswered">(
+    isTeacher ? "unanswered" : "conversation",
+  );
   const [thread, setThread] = useState<DirectMessageItem[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,6 +59,12 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
     }
   };
 
+  const loadUnanswered = async () => {
+    if (!isTeacher) return;
+    const list = await apiListUnansweredMessages(token);
+    setUnansweredItems(list);
+  };
+
   const loadThread = async (partnerId: number) => {
     const rows = await apiGetConversation(token, partnerId);
     setThread(rows);
@@ -56,7 +77,7 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
       try {
         setError(null);
         setLoading(true);
-        await Promise.all([loadConversations(), loadTeachers()]);
+        await Promise.all([loadConversations(), loadTeachers(), loadUnanswered()]);
       } catch (e: any) {
         setError(e.message || "読み込み失敗");
       } finally {
@@ -67,20 +88,22 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(async () => {
+    if (messageEventVersion === 0) return;
+
+    (async () => {
       try {
         await loadConversations();
+        await loadUnanswered();
         if (selectedUserId) {
           const rows = await apiGetConversation(token, selectedUserId);
           setThread(rows);
         }
       } catch {
-        // ポーリング時エラーは画面に出さない
+        // WebSocket再取得時エラーは画面に出さない
       }
-    }, 5000);
-
-    return () => window.clearInterval(id);
-  }, [token, selectedUserId]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageEventVersion]);
 
   const mergedContacts = useMemo(() => {
     const map = new Map<
@@ -134,6 +157,8 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
   }, [conversations, teachers, isTeacher, myUserId]);
 
   const selectedContact = mergedContacts.find((x) => x.user_id === selectedUserId) || null;
+  const selectedUnansweredItem =
+    unansweredItems.find((item) => item.id === selectedUnansweredId) || null;
 
   useEffect(() => {
     if (selectedUserId && !mergedContacts.some((x) => x.user_id === selectedUserId)) {
@@ -143,7 +168,9 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
   }, [mergedContacts, selectedUserId]);
 
   const onSelectContact = async (partnerId: number) => {
+    setActivePanel("conversation");
     setSelectedUserId(partnerId);
+    setSelectedUnansweredId(null);
     try {
       setError(null);
       await loadThread(partnerId);
@@ -156,11 +183,26 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
     if (!selectedUserId || !text.trim()) return;
     try {
       setError(null);
-      await apiSendDirectMessage(token, selectedUserId, text.trim());
+      await apiSendDirectMessage(token, selectedUserId, text.trim(), selectedUnansweredId);
       setText("");
+      setSelectedUnansweredId(null);
       await loadThread(selectedUserId);
+      await loadUnanswered();
     } catch (e: any) {
       setError(e.message || "送信失敗");
+    }
+  };
+
+  const openStudentConversationFromUnanswered = async (item: UnansweredMessageItem) => {
+    setSelectedUserId(item.student_id);
+    setSelectedUnansweredId(item.id);
+    setActivePanel("conversation");
+    try {
+      setError(null);
+      await loadThread(item.student_id);
+      setText(`AI会話で未回答となっていた件について回答します。\n\n【未回答の内容】\n${item.question}\n`);
+    } catch (e: any) {
+      setError(e.message || "会話の取得に失敗しました");
     }
   };
 
@@ -180,12 +222,31 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
 
       <div className="messages-layout">
         <aside className="messages-contacts">
+          {isTeacher && (
+            <button
+              type="button"
+              className={`messages-contact-item messages-unanswered-trigger ${activePanel === "unanswered" ? "active" : ""}`}
+              onClick={() => {
+                setActivePanel("unanswered");
+                setSelectedUserId(null);
+                setSelectedUnansweredId(null);
+                setThread([]);
+              }}
+            >
+              <div className="messages-contact-main">
+                <div className="messages-contact-name">🕒 AI会話未回答</div>
+                <div className="messages-contact-role">5分以上未回答の内容を確認</div>
+              </div>
+              {unansweredItems.length > 0 && <span className="msg-badge">{unansweredItems.length}</span>}
+            </button>
+          )}
+
           {mergedContacts.length === 0 && <div style={{ opacity: 0.7 }}>連絡先がありません。</div>}
           {mergedContacts.map((c) => (
             <button
               key={c.user_id}
               type="button"
-              className={`messages-contact-item ${selectedUserId === c.user_id ? "active" : ""}`}
+              className={`messages-contact-item ${activePanel === "conversation" && selectedUserId === c.user_id ? "active" : ""}`}
               onClick={() => onSelectContact(c.user_id)}
             >
               <div className="messages-contact-main">
@@ -201,9 +262,46 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
         </aside>
 
         <section className="messages-thread">
-          {!selectedContact && <div style={{ opacity: 0.7 }}>左側から相手を選択してください。</div>}
+          {activePanel === "unanswered" && isTeacher && (
+            <>
+              <div className="messages-thread-title">
+                <span className="messages-thread-name">AI会話未回答メッセージ</span>
+                <span className="messages-thread-role">（{unansweredItems.length}件）</span>
+              </div>
 
-          {selectedContact && (
+              <div className="messages-thread-body">
+                {unansweredItems.length === 0 && <div style={{ opacity: 0.7 }}>未回答メッセージはありません。</div>}
+
+                {unansweredItems.map((item) => (
+                  <div key={item.id} className="messages-unanswered-card">
+                    <div className="messages-unanswered-head">
+                      <div className="messages-unanswered-student">
+                        {(item.student_avatar || "🙂") + " "}
+                        {unansweredStudentName(item)}
+                        <span className="messages-thread-role">（生徒）</span>
+                      </div>
+                      <div className="messages-unanswered-time">
+                        {item.created_at.replace("T", " ").slice(0, 16)}
+                      </div>
+                    </div>
+                    <div className="messages-unanswered-subject">科目: {item.subject}</div>
+                    <div className="messages-unanswered-question">{item.question}</div>
+                    <div className="messages-unanswered-actions">
+                      <button className="primary-btn" onClick={() => openStudentConversationFromUnanswered(item)}>
+                        この生徒と対話
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activePanel === "conversation" && !selectedContact && (
+            <div style={{ opacity: 0.7 }}>左側から相手を選択してください。</div>
+          )}
+
+          {activePanel === "conversation" && selectedContact && (
             <>
               <div className="messages-thread-title">
                 <span className="messages-thread-name">
@@ -213,6 +311,13 @@ const MessagesView: React.FC<Props> = ({ token, myUserId, isTeacher, onUnreadCha
                 <span className="messages-thread-role">（{roleLabel(selectedContact.role)}）</span>
                 <span>との対話</span>
               </div>
+
+              {selectedUnansweredItem && isTeacher && (
+                <div className="messages-linked-unanswered">
+                  <div className="messages-linked-unanswered-title">対応中の未回答内容</div>
+                  <div className="messages-linked-unanswered-body">{selectedUnansweredItem.question}</div>
+                </div>
+              )}
 
               <div className="messages-thread-body">
                 {thread.map((m) => {

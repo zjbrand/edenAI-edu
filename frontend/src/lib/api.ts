@@ -102,7 +102,28 @@ export async function apiAsk(params: {
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-  return (await res.json()) as { answer: string };
+  return (await res.json()) as { answer: string; response_id: number | null };
+}
+
+export async function apiRateAiResponse(params: {
+  token: string;
+  responseId: number;
+  rating: number;
+}) {
+  const res = await fetch(`${API_BASE}/api/ask-feedback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.token}`,
+    },
+    body: JSON.stringify({
+      response_id: params.responseId,
+      rating: params.rating,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  return (await res.json()) as { ok: boolean; response_id: number; rating: number };
 }
 
 export type MeResponse = {

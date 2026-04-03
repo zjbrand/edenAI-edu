@@ -21,6 +21,18 @@ class AskRequest(BaseModel):
 
 class AskResponse(BaseModel):
     answer: str
+    response_id: int | None = None
+
+
+class AIResponseRatingRequest(BaseModel):
+    response_id: int
+    rating: int
+
+
+class AIResponseRatingResponse(BaseModel):
+    ok: bool
+    response_id: int
+    rating: int
 
 
 # ========== 用户 / 登录相关 ==========

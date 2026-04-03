@@ -1,10 +1,12 @@
 ﻿// frontend/src/components/admin/AdminView.tsx
 import React, { useEffect, useState } from "react";
 import {
+  fetchAiFeedbackSummary,
   fetchSystemStatus,
   fetchUsers,
   setUserActive,
   setUserRole,
+  type AiFeedbackSummary,
   type AdminUser,
 } from "../../api/admin";
 import {
@@ -15,7 +17,7 @@ import {
   type KnowledgeDocItem,
 } from "../../api/knowledge";
 
-export type AdminTab = "knowledge" | "users" | "system";
+export type AdminTab = "knowledge" | "users" | "ratings" | "system";
 
 interface AdminViewProps {
   token: string;
@@ -38,11 +40,23 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [ratingSummary, setRatingSummary] = useState<AiFeedbackSummary | null>(null);
+  const [ratingsErr, setRatingsErr] = useState<string | null>(null);
 
   const llmServiceStatus = status?.services?.llm ?? (status?.services?.api === "ok" ? "ok" : "ng");
   const vectorServiceStatus = status?.services?.vector_store ?? (status?.services?.db === "ok" ? "ok" : "ng");
   const [usersErr, setUsersErr] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  const loadRatings = async () => {
+    setRatingsErr(null);
+    try {
+      const summary = await fetchAiFeedbackSummary();
+      setRatingSummary(summary);
+    } catch (e: any) {
+      setRatingsErr(e.message || "読み込み失敗");
+    }
+  };
 
   const loadDocs = async () => {
     setDocsErr(null);
@@ -92,6 +106,7 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
     if (adminTab === "system") loadSystem();
     if (adminTab === "knowledge") loadDocs().catch((e) => setDocsErr(e.message || "読み込み失敗"));
     if (adminTab === "users") loadUsers();
+    if (adminTab === "ratings") loadRatings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminTab]);
 
@@ -162,21 +177,29 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
   return (
     <div className="admin-view">
       <div className="admin-header">
-        <h2>人員管理画面</h2>
-        <p>ナレッジ文書 / 人員 / システム状態</p>
+        <h2>{adminTab === "knowledge" ? "ナレッジ管理画面" : "システム管理画面"}</h2>
+        <p>
+          {adminTab === "knowledge"
+            ? "ナレッジ文書の登録 / 削除 / 再読み込み"
+            : adminTab === "ratings"
+              ? "AI回答への星評価を確認します。"
+              : "利用者設定 / システム状態"}
+        </p>
       </div>
 
-      <div className="admin-tabs">
-        <button className={`admin-tab ${adminTab === "knowledge" ? "active" : ""}`} onClick={() => setAdminTab("knowledge")}>
-          📚 ナレッジ
-        </button>
-        <button className={`admin-tab ${adminTab === "users" ? "active" : ""}`} onClick={() => setAdminTab("users")}>
-          👤 人員
-        </button>
-        <button className={`admin-tab ${adminTab === "system" ? "active" : ""}`} onClick={() => setAdminTab("system")}>
-          ⚙ システム
-        </button>
-      </div>
+      {adminTab !== "knowledge" && (
+        <div className="admin-tabs">
+          <button className={`admin-tab ${adminTab === "users" ? "active" : ""}`} onClick={() => setAdminTab("users")}>
+            👤 利用者
+          </button>
+          <button className={`admin-tab ${adminTab === "ratings" ? "active" : ""}`} onClick={() => setAdminTab("ratings")}>
+            ⭐ AI回答評価
+          </button>
+          <button className={`admin-tab ${adminTab === "system" ? "active" : ""}`} onClick={() => setAdminTab("system")}>
+            ⚙ システム
+          </button>
+        </div>
+      )}
 
       {adminTab === "knowledge" && (
         <div className="admin-knowledge">
@@ -243,7 +266,7 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
 
       {adminTab === "users" && (
         <div className="admin-card">
-          <h3>人員管理</h3>
+          <h3>利用者管理</h3>
           <p style={{ fontSize: 13, opacity: 0.8 }}>
             生徒の有効/停止、先生への昇格を管理します。
           </p>
@@ -352,6 +375,56 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
               {statusErr}
             </div>
           )}
+        </div>
+      )}
+
+      {adminTab === "ratings" && (
+        <div className="admin-card">
+          <h3>AI回答評価</h3>
+          <p style={{ fontSize: 13, opacity: 0.8 }}>
+            生徒と先生がAI会話で付けた星評価を集計表示します。
+          </p>
+
+          {ratingsErr && <div className="auth-error">{ratingsErr}</div>}
+
+          <div className="rating-summary">
+            <div className="rating-summary-score">
+              <div className="rating-summary-average">
+                {(ratingSummary?.average_rating ?? 0).toFixed(1)}
+              </div>
+              <div className="rating-summary-count">
+                {(ratingSummary?.total_reviews ?? 0).toLocaleString()} 件の評価
+              </div>
+              <div className="rating-summary-sub">
+                未評価回答: {ratingSummary?.unrated_count ?? 0}
+              </div>
+            </div>
+
+            <div className="rating-summary-bars">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = ratingSummary?.distribution?.[String(star)] ?? 0;
+                const total = ratingSummary?.total_reviews ?? 0;
+                const percent = total > 0 ? (count / total) * 100 : 0;
+
+                return (
+                  <div key={star} className="rating-bar-row">
+                    <div className="rating-bar-label">{star}</div>
+                    <div className="rating-bar-star">★</div>
+                    <div className="rating-bar-track">
+                      <div className="rating-bar-fill" style={{ width: `${percent}%` }} />
+                    </div>
+                    <div className="rating-bar-count">{count}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <button className="outline-btn" onClick={loadRatings}>
+              🔄 評価を再取得
+            </button>
+          </div>
         </div>
       )}
     </div>

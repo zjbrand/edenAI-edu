@@ -50,6 +50,14 @@ export type SystemStatus = {
   };
 };
 
+export type AiFeedbackSummary = {
+  average_rating: number;
+  total_reviews: number;
+  total_responses: number;
+  unrated_count: number;
+  distribution: Record<string, number>;
+};
+
 export type AdminUser = {
   id: number;
   email: string;
@@ -62,6 +70,10 @@ export type AdminUser = {
 
 export function fetchSystemStatus() {
   return request<SystemStatus>("/admin/system/status");
+}
+
+export function fetchAiFeedbackSummary() {
+  return request<AiFeedbackSummary>("/admin/system/ai-feedback");
 }
 
 export function fetchUsers() {

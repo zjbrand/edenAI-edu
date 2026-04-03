@@ -357,8 +357,14 @@ html, body, #root {
   justify-content: flex-start;
 }
 
-.chat-message-bubble {
+.chat-message-stack {
   max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-message-bubble {
   padding: 8px 10px;
   border-radius: 12px;
   white-space: pre-wrap;
@@ -380,6 +386,62 @@ html, body, #root {
 .app-root.light .assistant-bubble {
   background: #e5e7eb;
   color: #111827;
+}
+
+.chat-rating-box {
+  align-self: flex-start;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.app-root.light .chat-rating-box {
+  background: #ffffff;
+  border-color: #d6dde8;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.chat-rating-label {
+  font-size: 12px;
+  opacity: 0.82;
+  margin-bottom: 4px;
+}
+
+.chat-rating-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.chat-star-btn {
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+
+.chat-star-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  color: #fb923c;
+}
+
+.chat-star-btn.active {
+  color: #f59e0b;
+}
+
+.chat-star-btn:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.chat-rating-caption {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.78;
 }
 
 .error-bar {
@@ -589,6 +651,77 @@ html, body, #root {
 .admin-card h3 {
   margin: 0 0 8px;
   font-size: 14px;
+}
+
+.rating-summary {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.rating-summary-score {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rating-summary-average {
+  font-size: 72px;
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}
+
+.rating-summary-count {
+  font-size: 20px;
+  opacity: 0.88;
+}
+
+.rating-summary-sub {
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.rating-summary-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rating-bar-row {
+  display: grid;
+  grid-template-columns: 20px 20px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.rating-bar-label,
+.rating-bar-count {
+  font-size: 13px;
+}
+
+.rating-bar-star {
+  color: #f59e0b;
+  font-size: 15px;
+}
+
+.rating-bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #fef3c7;
+  overflow: hidden;
+}
+
+.rating-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #f59e0b;
+}
+
+.app-root.light .rating-bar-track {
+  background: #ffedd5;
 }
 
 .settings-view {
@@ -946,6 +1079,75 @@ html, body, #root {
   box-shadow: 0 0 0 1px rgba(22, 196, 127, 0.4) inset;
 }
 
+.messages-unanswered-trigger {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.messages-unanswered-card {
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.messages-unanswered-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.messages-unanswered-student {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.messages-unanswered-time {
+  font-size: 12px;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+.messages-unanswered-subject {
+  font-size: 12px;
+  opacity: 0.76;
+}
+
+.messages-unanswered-question {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.messages-unanswered-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.messages-linked-unanswered {
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.28);
+}
+
+.messages-linked-unanswered-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.messages-linked-unanswered-body {
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
 .messages-thread {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
@@ -1048,6 +1250,11 @@ html, body, #root {
   box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.25) inset;
 }
 
+.app-root.light .messages-unanswered-trigger {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
 .app-root.light .messages-thread-title {
   color: #0f172a;
 }
@@ -1067,6 +1274,16 @@ html, body, #root {
 
 .app-root.light .teacher-plain-text {
   color: #0f172a;
+}
+
+.app-root.light .messages-unanswered-card {
+  background: #fffaf3;
+  border-color: #fed7aa;
+}
+
+.app-root.light .messages-linked-unanswered {
+  background: #fffbeb;
+  border-color: #fcd34d;
 }
 
 @media (max-width: 768px) {
@@ -1123,6 +1340,10 @@ html, body, #root {
     max-width: 85%;
   }
 
+  .chat-message-stack {
+    max-width: 85%;
+  }
+
   .messages-view {
     height: auto;
     min-height: calc(100vh - 64px);
@@ -1150,6 +1371,10 @@ html, body, #root {
     align-items: flex-start;
   }
 
+  .messages-unanswered-head {
+    flex-direction: column;
+  }
+
   .messages-thread-title {
     font-size: 14px;
   }
@@ -1160,6 +1385,15 @@ html, body, #root {
 
   .messages-thread-input button {
     width: 100%;
+  }
+
+  .rating-summary {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .rating-summary-average {
+    font-size: 56px;
   }
 }
 

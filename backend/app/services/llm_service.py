@@ -12,6 +12,15 @@ logger = logging.getLogger("edenai.llm")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+LLM_REQUEST_TIMEOUT_SECONDS = 300.0
+
+
+class LLMServiceError(Exception):
+    """AI 応答に失敗したときの共通例外"""
+
+
+class LLMServiceTimeoutError(LLMServiceError):
+    """5分以内に応答が返らなかったときの例外"""
 
 SYSTEM_PROMPT = """
 你是一位耐心、讲解清楚的编程老师，同时非常了解我们公司的内部情况。
@@ -59,7 +68,7 @@ def ask_llm(
     history = history or []
 
     if not GROQ_API_KEY:
-        return "后端配置错误：请先在 .env 中设置 GROQ_API_KEY。"
+        raise LLMServiceError("AIサービスの設定が未完了です。")
 
     context = get_relevant_context(question, top_k=30)
     if context:
@@ -81,19 +90,24 @@ def ask_llm(
     }
 
     try:
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=LLM_REQUEST_TIMEOUT_SECONDS) as client:
             resp = client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
+    except httpx.TimeoutException as e:
+        logger.warning("Groq call timeout after %s seconds", LLM_REQUEST_TIMEOUT_SECONDS)
+        raise LLMServiceTimeoutError("AIが5分以内に応答しませんでした。") from e
     except httpx.HTTPStatusError as e:
         logger.warning("Groq HTTP error status=%s", e.response.status_code)
-        return f"调用 Groq 接口失败：HTTP {e.response.status_code}，详情：{e.response.text[:200]}"
+        raise LLMServiceError(
+            f"AIサービス呼び出しに失敗しました。HTTP {e.response.status_code}"
+        ) from e
     except Exception as e:
         logger.exception("Groq call failed: %s", e)
-        return f"调用 Groq 接口时发生错误：{e}"
+        raise LLMServiceError("AIサービスへの接続中にエラーが発生しました。") from e
 
     try:
         return data["choices"][0]["message"]["content"]
     except Exception as e:
         logger.exception("Groq response parse failed: %s", e)
-        return f"解析 Groq 返回内容时出错：{e}；原始响应：{data}"
+        raise LLMServiceError("AI応答の解析に失敗しました。") from e

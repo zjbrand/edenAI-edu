@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.db import get_db
+from app.models.ai_feedback import AIResponseFeedback
 from app.models.knowledge import KnowledgeDoc
 from app.models.user import User
 from app.services.llm_service import GROQ_API_KEY
@@ -48,4 +50,28 @@ def system_status(_: dict = Depends(require_admin), db: Session = Depends(get_db
             "inactive_teacher_count": inactive_teacher_count,
             "knowledge_docs": doc_count,
         },
+    }
+
+
+@router.get("/ai-feedback")
+def ai_feedback_summary(_: dict = Depends(require_admin), db: Session = Depends(get_db)):
+    rated_query = db.query(AIResponseFeedback).filter(AIResponseFeedback.rating.isnot(None))
+    total_reviews = rated_query.count()
+    average_rating = rated_query.with_entities(func.avg(AIResponseFeedback.rating)).scalar() or 0
+    total_responses = db.query(AIResponseFeedback).count()
+
+    distribution = {}
+    for stars in range(5, 0, -1):
+        distribution[str(stars)] = (
+            db.query(AIResponseFeedback)
+            .filter(AIResponseFeedback.rating == stars)
+            .count()
+        )
+
+    return {
+        "average_rating": float(average_rating),
+        "total_reviews": total_reviews,
+        "total_responses": total_responses,
+        "unrated_count": max(total_responses - total_reviews, 0),
+        "distribution": distribution,
     }

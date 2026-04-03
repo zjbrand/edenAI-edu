@@ -130,13 +130,26 @@ const Sidebar: React.FC<Props> = ({
           {isTeacher && (
             <button
               type="button"
+              className={`nav-item ${activeView === "knowledge" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("knowledge");
+                setSidebarOpen(false);
+              }}
+            >
+              📚 ナレッジ
+            </button>
+          )}
+
+          {isTeacher && (
+            <button
+              type="button"
               className={`nav-item ${activeView === "admin" ? "active" : ""}`}
               onClick={() => {
                 setActiveView("admin");
                 setSidebarOpen(false);
               }}
             >
-              📊 人員管理
+              📊 システム管理
             </button>
           )}
 

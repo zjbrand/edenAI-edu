@@ -10,8 +10,8 @@ import MessagesView from "./components/messages/MessagesView";
 import CodeScoreView from "./components/code-score/CodeScoreView";
 
 import type { Message, View, Theme, AuthMode } from "./types";
-import { apiAsk, apiLogin, apiRegister, apiMe } from "./lib/api";
-import { apiUnreadCount } from "./api/messages";
+import { apiAsk, apiLogin, apiRegister, apiMe, apiRateAiResponse } from "./lib/api";
+import { apiUnreadCount, createMessagesSocket, type MessagesSocketEvent } from "./api/messages";
 import type { MeResponse } from "./lib/api";
 
 export type LoginType = "student" | "teacher";
@@ -30,7 +30,7 @@ const App: React.FC = () => {
 
   const [activeView, setActiveView] = useState<View>("chat");
   const [theme, setTheme] = useState<Theme>("light");
-  const [adminTab, setAdminTab] = useState<AdminTab>("knowledge");
+  const [adminTab, setAdminTab] = useState<AdminTab>("system");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [token, setToken] = useState<string | null>(() =>
@@ -51,6 +51,7 @@ const App: React.FC = () => {
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const [teacherUnreadCount, setTeacherUnreadCount] = useState(0);
+  const [messageEventVersion, setMessageEventVersion] = useState(0);
 
   const isTeacher = me?.role === "teacher" || me?.role === "admin";
 
@@ -82,19 +83,56 @@ const App: React.FC = () => {
       return;
     }
 
-    const load = async () => {
+    (async () => {
       try {
         const count = await apiUnreadCount(token);
         setTeacherUnreadCount(count);
       } catch {
-        // 取得失敗時は次回ポーリングで再取得
+        // 初回取得失敗時は WebSocket 再通知を待つ
       }
+    })();
+  }, [token, isTeacher]);
+
+  useEffect(() => {
+    if (!token || !isLoggedIn) return;
+
+    let ws: WebSocket | null = null;
+    let closedByEffect = false;
+    let reconnectTimer: number | null = null;
+
+    const connect = () => {
+      ws = createMessagesSocket(token);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as MessagesSocketEvent;
+          if (typeof data.unread_count === "number" && isTeacher) {
+            setTeacherUnreadCount(data.unread_count);
+          }
+          if (data.type === "messages_updated") {
+            setMessageEventVersion((prev) => prev + 1);
+          }
+        } catch {
+          // 不正なイベントは無視
+        }
+      };
+
+      ws.onclose = () => {
+        if (closedByEffect) return;
+        reconnectTimer = window.setTimeout(connect, 3000);
+      };
     };
 
-    load();
-    const id = window.setInterval(load, 5000);
-    return () => window.clearInterval(id);
-  }, [token, isTeacher]);
+    connect();
+
+    return () => {
+      closedByEffect = true;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+      }
+      ws?.close();
+    };
+  }, [token, isLoggedIn, isTeacher]);
 
   const handleSend = async () => {
     const trimmed = question.trim();
@@ -119,11 +157,48 @@ const App: React.FC = () => {
         subject,
         history: historyPayload,
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.answer,
+          responseId: data.response_id ?? undefined,
+          rating: null,
+        },
+      ]);
     } catch (e: any) {
       setError(e.message || "リクエスト失敗");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRateResponse = async (responseId: number, rating: number) => {
+    if (!token) {
+      alert("ログインしてください。");
+      return;
+    }
+
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.responseId === responseId ? { ...msg, ratingPending: true } : msg
+      )
+    );
+
+    try {
+      await apiRateAiResponse({ token, responseId, rating });
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.responseId === responseId ? { ...msg, rating, ratingPending: false } : msg
+        )
+      );
+    } catch (e: any) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.responseId === responseId ? { ...msg, ratingPending: false } : msg
+        )
+      );
+      alert(e.message || "評価の送信に失敗しました。");
     }
   };
 
@@ -211,6 +286,10 @@ const App: React.FC = () => {
       return <AdminView token={token!} adminTab={adminTab} setAdminTab={setAdminTab} />;
     }
 
+    if (activeView === "knowledge") {
+      return <AdminView token={token!} adminTab="knowledge" setAdminTab={setAdminTab} />;
+    }
+
     if (activeView === "messages") {
       return (
         <MessagesView
@@ -218,6 +297,7 @@ const App: React.FC = () => {
           myUserId={me?.id ?? 0}
           isTeacher={!!isTeacher}
           onUnreadChanged={setTeacherUnreadCount}
+          messageEventVersion={messageEventVersion}
         />
       );
     }
@@ -246,6 +326,7 @@ const App: React.FC = () => {
         loading={loading}
         error={error}
         onSend={handleSend}
+        onRateResponse={handleRateResponse}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -264,7 +345,7 @@ const App: React.FC = () => {
           toggleTheme={toggleTheme}
           activeView={activeView}
           setActiveView={(v) => {
-            if (v === "admin" && !isTeacher) return;
+            if ((v === "admin" || v === "knowledge") && !isTeacher) return;
             setActiveView(v);
           }}
           sidebarOpen={sidebarOpen}

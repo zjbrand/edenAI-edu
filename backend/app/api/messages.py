@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+from anyio import from_thread
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db import get_db
+from app.models.ai_unanswered import AIUnansweredMessage
 from app.models.message import DirectMessage
 from app.models.user import User
+from app.services.auth_service import decode_token
+from app.services.realtime_service import realtime_manager
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -24,6 +28,57 @@ def _is_student(role: str) -> bool:
     return role in ("student", "user")
 
 
+def _count_unread_messages(db: Session, user_id: int) -> int:
+    return (
+        db.query(DirectMessage)
+        .filter(
+            and_(
+                DirectMessage.recipient_id == user_id,
+                DirectMessage.is_read == False,  # noqa: E712
+            )
+        )
+        .count()
+    )
+
+
+def _count_unanswered_messages(db: Session) -> int:
+    return (
+        db.query(AIUnansweredMessage)
+        .join(User, User.id == AIUnansweredMessage.user_id)
+        .filter(
+            AIUnansweredMessage.resolved_at.is_(None),
+            User.is_active == True,  # noqa: E712
+            User.role.in_(["student", "user"]),
+        )
+        .count()
+    )
+
+
+def _list_teacher_ids(db: Session) -> list[int]:
+    return [
+        row.id
+        for row in db.query(User.id)
+        .filter(User.is_active == True)  # noqa: E712
+        .filter(User.role.in_(["teacher", "admin"]))
+        .all()
+    ]
+
+
+def _push_refresh_event(db: Session, user_ids: list[int], reason: str) -> None:
+    payload = {
+        "type": "messages_updated",
+        "reason": reason,
+        "unanswered_count": _count_unanswered_messages(db),
+    }
+
+    for user_id in user_ids:
+        payload_for_user = {
+            **payload,
+            "unread_count": _count_unread_messages(db, user_id),
+        }
+        from_thread.run(realtime_manager.send_to_user, user_id, payload_for_user)
+
+
 class TeacherItem(BaseModel):
     id: int
     email: str
@@ -34,6 +89,7 @@ class TeacherItem(BaseModel):
 class SendMessageRequest(BaseModel):
     to_user_id: int
     content: str
+    linked_unanswered_id: int | None = None
 
 
 class MessageItem(BaseModel):
@@ -55,6 +111,56 @@ class ConversationItem(BaseModel):
     last_message: str
     last_at: str
     unread_count: int
+
+
+class UnansweredMessageItem(BaseModel):
+    id: int
+    student_id: int
+    student_email: str
+    student_name: str | None = None
+    student_avatar: str | None = None
+    subject: str
+    question: str
+    created_at: str
+
+
+@router.websocket("/ws")
+async def messages_websocket(websocket: WebSocket):
+    token = websocket.query_params.get("token", "")
+    payload = decode_token(token)
+    if not payload:
+        await websocket.close(code=1008)
+        return
+
+    email = payload.get("sub")
+    if not email:
+        await websocket.close(code=1008)
+        return
+
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            await websocket.close(code=1008)
+            return
+
+        await realtime_manager.connect(user.id, websocket)
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "unread_count": _count_unread_messages(db, user.id),
+                "unanswered_count": _count_unanswered_messages(db),
+            }
+        )
+
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if "user" in locals():
+            realtime_manager.disconnect(user.id, websocket)
+        db.close()
 
 
 @router.get("/teachers", response_model=List[TeacherItem])
@@ -109,8 +215,27 @@ def send_message(
         created_at=datetime.utcnow(),
     )
     db.add(msg)
+
+    if sender_is_teacher and payload.linked_unanswered_id:
+        unanswered = (
+            db.query(AIUnansweredMessage)
+            .filter(
+                AIUnansweredMessage.id == payload.linked_unanswered_id,
+                AIUnansweredMessage.user_id == recipient.id,
+                AIUnansweredMessage.resolved_at.is_(None),
+            )
+            .first()
+        )
+        if unanswered:
+            unanswered.resolved_at = datetime.utcnow()
+            db.add(unanswered)
+
     db.commit()
     db.refresh(msg)
+    _push_refresh_event(db, [current_user.id, recipient.id], "direct_message")
+
+    if sender_is_teacher and payload.linked_unanswered_id:
+        _push_refresh_event(db, _list_teacher_ids(db), "unanswered_resolved")
 
     return MessageItem(
         id=msg.id,
@@ -241,6 +366,41 @@ def get_conversation(
     ]
 
 
+@router.get("/unanswered", response_model=List[UnansweredMessageItem])
+def list_unanswered_messages(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not _is_teacher(current_user.role):
+        raise HTTPException(status_code=403, detail="先生のみ利用できます。")
+
+    rows = (
+        db.query(AIUnansweredMessage, User)
+        .join(User, User.id == AIUnansweredMessage.user_id)
+        .filter(
+            AIUnansweredMessage.resolved_at.is_(None),
+            User.is_active == True,  # noqa: E712
+            User.role.in_(["student", "user"]),
+        )
+        .order_by(AIUnansweredMessage.created_at.desc())
+        .all()
+    )
+
+    return [
+        UnansweredMessageItem(
+            id=item.id,
+            student_id=user.id,
+            student_email=user.email,
+            student_name=user.full_name,
+            student_avatar=user.avatar,
+            subject=item.subject,
+            question=item.question,
+            created_at=item.created_at.isoformat(),
+        )
+        for item, user in rows
+    ]
+
+
 @router.post("/conversations/{partner_id}/read")
 def mark_conversation_read(
     partner_id: int,
@@ -263,6 +423,7 @@ def mark_conversation_read(
         r.is_read = True
 
     db.commit()
+    _push_refresh_event(db, [current_user.id], "read")
     return {"ok": True, "updated": len(rows)}
 
 
@@ -271,14 +432,5 @@ def unread_count(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    cnt = (
-        db.query(DirectMessage)
-        .filter(
-            and_(
-                DirectMessage.recipient_id == current_user.id,
-                DirectMessage.is_read == False,  # noqa: E712
-            )
-        )
-        .count()
-    )
+    cnt = _count_unread_messages(db, current_user.id)
     return {"count": cnt}

@@ -16,6 +16,7 @@ type Props = {
   error: string | null;
 
   onSend: () => void;
+  onRateResponse: (responseId: number, rating: number) => void;
   onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement>;
 };
 
@@ -30,6 +31,7 @@ const ChatView: React.FC<Props> = ({
   loading,
   error,
   onSend,
+  onRateResponse,
   onKeyDown,
 }) => {
   return (
@@ -76,10 +78,40 @@ const ChatView: React.FC<Props> = ({
             key={idx}
             className={`chat-message-row ${msg.role === "user" ? "align-right" : "align-left"}`}
           >
-            <div
-              className={`chat-message-bubble ${msg.role === "user" ? "user-bubble" : "assistant-bubble"}`}
-            >
-              {msg.content}
+            <div className="chat-message-stack">
+              <div
+                className={`chat-message-bubble ${msg.role === "user" ? "user-bubble" : "assistant-bubble"}`}
+              >
+                {msg.content}
+              </div>
+
+              {msg.role === "assistant" && msg.responseId && (
+                <div className="chat-rating-box">
+                  <div className="chat-rating-label">この回答を評価</div>
+                  <div className="chat-rating-stars" aria-label="AI回答評価">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`chat-star-btn ${(msg.rating || 0) >= star ? "active" : ""}`}
+                        onClick={() => onRateResponse(msg.responseId!, star)}
+                        disabled={msg.ratingPending}
+                        aria-label={`${star}つ星で評価`}
+                        title={`${star}つ星で評価`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <div className="chat-rating-caption">
+                    {msg.ratingPending
+                      ? "送信中..."
+                      : msg.rating
+                        ? `${msg.rating}つ星で評価済み`
+                        : "未評価"}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

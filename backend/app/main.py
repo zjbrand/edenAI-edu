@@ -18,6 +18,8 @@ from app.api.messages import router as messages_router
 from app.db import Base, engine, get_db
 from app.models.knowledge import KnowledgeDoc  # noqa: F401
 from app.models.message import DirectMessage  # noqa: F401
+from app.models.ai_feedback import AIResponseFeedback  # noqa: F401
+from app.models.ai_unanswered import AIUnansweredMessage  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.services.knowledge_service import reload_knowledge_cache
 from app.settings import settings
