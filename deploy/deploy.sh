@@ -36,7 +36,7 @@ echo "[5/7] frontend build"
 npm run build
 
 echo "[6/7] restart backend"
-sudo systemctl restart edenai-backend
+sudo systemctl restart edenai
 
 echo "[7/7] reload nginx"
 sudo nginx -t
