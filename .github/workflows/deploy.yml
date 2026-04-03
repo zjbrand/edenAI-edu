@@ -18,4 +18,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/edenai-teacher/deploy
+            git reset --hard origin/main
+            git clean -fd
+            chmod +x deploy/deploy.sh
+            cd deploy
             ./deploy.sh
