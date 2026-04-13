@@ -71,6 +71,11 @@ class Settings:
     # DB
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
+    # LLM
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
     # ナレッジソース切替
     KNOWLEDGE_ENABLE_DB: bool = _to_bool(
         os.getenv("KNOWLEDGE_ENABLE_DB"),

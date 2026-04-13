@@ -1,4 +1,5 @@
 // src/lib/api.ts
+import type { ChatSessionDetail, ChatSessionSummary } from "../types";
 const API_BASE_FROM_ENV = import.meta.env.VITE_API_BASE as string | undefined;
 
 function resolveApiBase(): string {
@@ -87,6 +88,7 @@ export async function apiAsk(params: {
   question: string;
   subject: string;
   history: { role: string; content: string }[];
+  conversationId?: number | null;
 }) {
   const res = await fetch(`${API_BASE}/api/ask`, {
     method: "POST",
@@ -98,11 +100,12 @@ export async function apiAsk(params: {
       question: params.question,
       subject: params.subject,
       history: params.history,
+      conversation_id: params.conversationId ?? null,
     }),
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-  return (await res.json()) as { answer: string; response_id: number | null };
+  return (await res.json()) as { answer: string; response_id: number | null; conversation_id: number };
 }
 
 export async function apiRateAiResponse(params: {
@@ -124,6 +127,48 @@ export async function apiRateAiResponse(params: {
 
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   return (await res.json()) as { ok: boolean; response_id: number; rating: number };
+}
+
+export async function apiListChatSessions(token: string): Promise<ChatSessionSummary[]> {
+  const res = await fetch(`${API_BASE}/api/chat-sessions`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function apiGetChatSession(token: string, sessionId: number): Promise<ChatSessionDetail> {
+  const res = await fetch(`${API_BASE}/api/chat-sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function apiRenameChatSession(token: string, sessionId: number, title: string) {
+  const res = await fetch(`${API_BASE}/api/chat-sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{ ok: boolean; id: number; title: string }>;
+}
+
+export async function apiDeleteChatSession(token: string, sessionId: number) {
+  const res = await fetch(`${API_BASE}/api/chat-sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{ ok: boolean; id: number }>;
 }
 
 export type MeResponse = {

@@ -19,6 +19,8 @@ from app.db import Base, engine, get_db
 from app.models.knowledge import KnowledgeDoc  # noqa: F401
 from app.models.message import DirectMessage  # noqa: F401
 from app.models.ai_feedback import AIResponseFeedback  # noqa: F401
+from app.models.chat_history import AIChatMessage, AIChatSession  # noqa: F401
+from app.models.code_review_history import CodeReviewHistory  # noqa: F401
 from app.models.ai_unanswered import AIUnansweredMessage  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.services.knowledge_service import reload_knowledge_cache

@@ -9,8 +9,8 @@ import SettingsView from "./components/settings/SettingsView";
 import MessagesView from "./components/messages/MessagesView";
 import CodeScoreView from "./components/code-score/CodeScoreView";
 
-import type { Message, View, Theme, AuthMode } from "./types";
-import { apiAsk, apiLogin, apiRegister, apiMe, apiRateAiResponse } from "./lib/api";
+import type { ChatSessionSummary, Message, View, Theme, AuthMode } from "./types";
+import { apiAsk, apiDeleteChatSession, apiGetChatSession, apiListChatSessions, apiLogin, apiRegister, apiMe, apiRateAiResponse, apiRenameChatSession } from "./lib/api";
 import { apiUnreadCount, createMessagesSocket, type MessagesSocketEvent } from "./api/messages";
 import type { MeResponse } from "./lib/api";
 
@@ -24,6 +24,9 @@ const roleLabel = (role: string | undefined) => {
 const App: React.FC = () => {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState("プログラミング");
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,8 @@ const App: React.FC = () => {
     if (!token) {
       setMe(null);
       setTeacherUnreadCount(0);
+      setChatSessions([]);
+      setActiveConversationId(null);
       return;
     }
 
@@ -76,6 +81,19 @@ const App: React.FC = () => {
       }
     })();
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !isLoggedIn) return;
+
+    (async () => {
+      try {
+        const sessions = await apiListChatSessions(token);
+        setChatSessions(sessions);
+      } catch {
+        // 履歴の初回取得失敗は会話利用時に再試行
+      }
+    })();
+  }, [token, isLoggedIn]);
 
   useEffect(() => {
     if (!token || !isTeacher) {
@@ -156,6 +174,7 @@ const App: React.FC = () => {
         question: trimmed,
         subject,
         history: historyPayload,
+        conversationId: activeConversationId,
       });
       setMessages((prev) => [
         ...prev,
@@ -166,10 +185,76 @@ const App: React.FC = () => {
           rating: null,
         },
       ]);
+      setActiveConversationId(data.conversation_id);
+      const sessions = await apiListChatSessions(token);
+      setChatSessions(sessions);
     } catch (e: any) {
       setError(e.message || "リクエスト失敗");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectConversation = async (sessionId: number) => {
+    if (!token) return;
+    try {
+      setError(null);
+      setChatHistoryLoading(true);
+      const session = await apiGetChatSession(token, sessionId);
+      setActiveConversationId(session.id);
+      setSubject(session.subject || "プログラミング");
+      setMessages(
+        session.messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          responseId: msg.response_id ?? undefined,
+          rating: msg.rating ?? null,
+          createdAt: msg.created_at,
+        }))
+      );
+      setQuestion("");
+    } catch (e: any) {
+      setError(e.message || "履歴の読み込みに失敗しました。");
+    } finally {
+      setChatHistoryLoading(false);
+    }
+  };
+
+  const handleNewConversation = () => {
+    setActiveConversationId(null);
+    setMessages([]);
+    setQuestion("");
+    setError(null);
+  };
+
+  const handleRenameConversation = async (session: ChatSessionSummary) => {
+    if (!token) return;
+    const nextTitle = window.prompt("新しい履歴名を入力してください。", session.title);
+    if (nextTitle === null) return;
+
+    try {
+      await apiRenameChatSession(token, session.id, nextTitle);
+      const sessions = await apiListChatSessions(token);
+      setChatSessions(sessions);
+    } catch (e: any) {
+      setError(e.message || "履歴名の変更に失敗しました。");
+    }
+  };
+
+  const handleDeleteConversation = async (session: ChatSessionSummary) => {
+    if (!token) return;
+    const ok = window.confirm(`「${session.title}」を削除しますか？`);
+    if (!ok) return;
+
+    try {
+      await apiDeleteChatSession(token, session.id);
+      const sessions = await apiListChatSessions(token);
+      setChatSessions(sessions);
+      if (activeConversationId === session.id) {
+        handleNewConversation();
+      }
+    } catch (e: any) {
+      setError(e.message || "履歴の削除に失敗しました。");
     }
   };
 
@@ -258,6 +343,8 @@ const App: React.FC = () => {
     setActiveView("chat");
     setSidebarOpen(false);
     setMessages([]);
+    setChatSessions([]);
+    setActiveConversationId(null);
   };
 
   const renderMainContent = () => {
@@ -321,11 +408,18 @@ const App: React.FC = () => {
         subject={subject}
         setSubject={setSubject}
         messages={messages}
+        sessions={chatSessions}
+        activeConversationId={activeConversationId}
         question={question}
         setQuestion={setQuestion}
         loading={loading}
+        historyLoading={chatHistoryLoading}
         error={error}
         onSend={handleSend}
+        onNewConversation={handleNewConversation}
+        onSelectConversation={handleSelectConversation}
+        onRenameConversation={handleRenameConversation}
+        onDeleteConversation={handleDeleteConversation}
         onRateResponse={handleRateResponse}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {

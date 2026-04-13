@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+﻿from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
@@ -15,28 +15,28 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """
-    从 JWT 中解析当前用户（sub = email）
+    JWT から現在のユーザーを取得する（sub = email）
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token 无效或已过期",
+            detail="トークンが無効、または期限切れです。",
         )
 
     email: str | None = payload.get("sub")
     if not email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token 中缺少 sub",
+            detail="トークンに sub が含まれていません。",
         )
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户不存在",
+            detail="ユーザーが見つかりません。",
         )
 
     return user
@@ -44,13 +44,13 @@ def get_current_user(
 
 def require_admin(current_user: User = Depends(get_current_user)):
     """
-    先生（teacher）権限校验
-    兼容旧数据中的 admin 角色
+    先生権限を確認する
+    旧データの admin ロールにも対応する
     """
     if current_user.role not in ("teacher", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="先生権限が必要です",
+            detail="先生権限が必要です。",
         )
 
     return {

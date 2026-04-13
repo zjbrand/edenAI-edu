@@ -1,8 +1,8 @@
-// frontend/src/api.ts
+﻿// frontend/src/api.ts
 
 import { API_BASE } from "./lib/api";
 
-// ====== 类型 ======
+// ====== 型定義 ======
 export type Role = "user" | "assistant";
 
 export interface ChatMessage {
@@ -19,7 +19,7 @@ export interface LoginResponse {
   token_type: string;
 }
 
-// ====== Token 工具函数 ======
+// ====== トークン操作 ======
 const TOKEN_KEY = "eden_ai_token";
 
 export function saveToken(token: string) {
@@ -34,7 +34,7 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-// ====== 请求封装 ======
+// ====== リクエスト共通処理 ======
 function buildHeaders(token?: string): HeadersInit {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -45,7 +45,7 @@ function buildHeaders(token?: string): HeadersInit {
   return headers;
 }
 
-// 1) 登录
+// 1) ログイン
 export async function apiLogin(
   email: string,
   password: string
@@ -58,14 +58,14 @@ export async function apiLogin(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `登录失败，HTTP ${res.status}`);
+    throw new Error(text || `ログインに失敗しました。HTTP ${res.status}`);
   }
 
   const data = (await res.json()) as LoginResponse;
   return data;
 }
 
-// 2) 注册
+// 2) 登録
 export async function apiRegister(
   email: string,
   password: string,
@@ -83,11 +83,11 @@ export async function apiRegister(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `注册失败，HTTP ${res.status}`);
+    throw new Error(text || `登録に失敗しました。HTTP ${res.status}`);
   }
 }
 
-// 3) 问问题（带历史和可选 token）
+// 3) 質問送信（履歴と任意トークン付き）
 export async function apiAsk(
   question: string,
   subject: string,
@@ -106,7 +106,7 @@ export async function apiAsk(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `提问失败，HTTP ${res.status}`);
+    throw new Error(text || `質問送信に失敗しました。HTTP ${res.status}`);
   }
 
   const data = (await res.json()) as AskResponse;
