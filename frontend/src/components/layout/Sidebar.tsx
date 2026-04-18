@@ -99,6 +99,17 @@ const Sidebar: React.FC<Props> = ({
             🧪 コード採点
           </button>
 
+          <button
+            type="button"
+            className={`nav-item ${activeView === "test_analysis" ? "active" : ""}`}
+            onClick={() => {
+              setActiveView("test_analysis");
+              setSidebarOpen(false);
+            }}
+          >
+            📝 テスト解答分析
+          </button>
+
           {!isTeacher && (
             <button
               type="button"
@@ -136,7 +147,7 @@ const Sidebar: React.FC<Props> = ({
                 setSidebarOpen(false);
               }}
             >
-              📚 ナレッジ
+              📚 AI再学習
             </button>
           )}
 

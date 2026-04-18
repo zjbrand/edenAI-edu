@@ -15,6 +15,7 @@ from app.api.ask import router as ask_router
 from app.api.auth import router as auth_router
 from app.api.code_review import router as code_review_router
 from app.api.messages import router as messages_router
+from app.api.test_answer_analysis import router as test_answer_analysis_router
 from app.db import Base, engine, get_db
 from app.models.knowledge import KnowledgeDoc  # noqa: F401
 from app.models.message import DirectMessage  # noqa: F401
@@ -22,6 +23,7 @@ from app.models.ai_feedback import AIResponseFeedback  # noqa: F401
 from app.models.chat_history import AIChatMessage, AIChatSession  # noqa: F401
 from app.models.code_review_history import CodeReviewHistory  # noqa: F401
 from app.models.ai_unanswered import AIUnansweredMessage  # noqa: F401
+from app.models.test_answer_history import TestAnswerAnalysisHistory  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.services.knowledge_service import reload_knowledge_cache
 from app.settings import settings
@@ -62,6 +64,7 @@ app.include_router(admin_users_router)
 app.include_router(admin_system_router)
 app.include_router(messages_router)
 app.include_router(code_review_router)
+app.include_router(test_answer_analysis_router)
 
 
 def _ensure_avatar_column() -> None:

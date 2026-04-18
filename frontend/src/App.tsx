@@ -8,6 +8,7 @@ import AdminView, { type AdminTab } from "./components/admin/AdminView";
 import SettingsView from "./components/settings/SettingsView";
 import MessagesView from "./components/messages/MessagesView";
 import CodeScoreView from "./components/code-score/CodeScoreView";
+import TestAnswerAnalysisView from "./components/test-analysis/TestAnswerAnalysisView";
 
 import type { ChatSessionSummary, Message, View, Theme, AuthMode } from "./types";
 import { apiAsk, apiDeleteChatSession, apiGetChatSession, apiListChatSessions, apiLogin, apiRegister, apiMe, apiRateAiResponse, apiRenameChatSession } from "./lib/api";
@@ -391,6 +392,10 @@ const App: React.FC = () => {
 
     if (activeView === "code_score") {
       return <CodeScoreView token={token ?? ""} />;
+    }
+
+    if (activeView === "test_analysis") {
+      return <TestAnswerAnalysisView token={token ?? ""} />;
     }
 
     if (activeView === "settings") {

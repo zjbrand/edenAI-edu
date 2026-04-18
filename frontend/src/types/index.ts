@@ -38,7 +38,7 @@ export interface ChatSessionDetail {
   }>;
 }
 
-export type View = "chat" | "admin" | "knowledge" | "messages" | "settings" | "code_score";
+export type View = "chat" | "admin" | "knowledge" | "messages" | "settings" | "code_score" | "test_analysis";
 export type Theme = "dark" | "light";
 export type AuthMode = "login" | "register";
 
