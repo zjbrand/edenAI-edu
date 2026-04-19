@@ -119,7 +119,7 @@ const Sidebar: React.FC<Props> = ({
                 setSidebarOpen(false);
               }}
             >
-              🙋 先生に質問
+              🙋 AI回答不能（先生対応）
             </button>
           )}
 
@@ -133,7 +133,7 @@ const Sidebar: React.FC<Props> = ({
               }}
               style={{ position: "relative" }}
             >
-              📨 メッセージ
+              📨 AI回答不能（先生対応）
               {teacherUnreadCount > 0 && <span className="msg-badge nav-badge">{teacherUnreadCount}</span>}
             </button>
           )}

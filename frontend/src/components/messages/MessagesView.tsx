@@ -209,9 +209,12 @@ const MessagesView: React.FC<Props> = ({
   return (
     <div className="messages-view">
       <div className="messages-header">
-        <h2>{isTeacher ? "メッセージ（生徒対応）" : "先生に質問"}</h2>
+        <h2>AI回答不能（先生対応）</h2>
+        <p style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+          AIが回答できない場合、または回答が正しくない場合は、先生に質問できます。
+        </p>
         {isTeacher && (
-          <p style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+          <p style={{ marginTop: 4, fontSize: 12, opacity: 0.78 }}>
             AI会話で生徒の要望を満たせない場合は、回答をコピーしてTXT形式で会社ナレッジにアップロードしてください。
           </p>
         )}

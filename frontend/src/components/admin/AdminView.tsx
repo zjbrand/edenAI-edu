@@ -177,10 +177,10 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
   return (
     <div className="admin-view">
       <div className="admin-header">
-        <h2>{adminTab === "knowledge" ? "ナレッジ管理画面" : "システム管理画面"}</h2>
+        <h2>{adminTab === "knowledge" ? "AI再学習画面" : "システム管理画面"}</h2>
         <p>
           {adminTab === "knowledge"
-            ? "ナレッジ文書の登録 / 削除 / 再読み込み"
+            ? "AIが回答できない場合、または回答が正しくない場合の内容を再学習文書として管理します。"
             : adminTab === "ratings"
               ? "AI回答への星評価を確認します。"
               : "利用者設定 / システム状態"}
@@ -204,7 +204,7 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
       {adminTab === "knowledge" && (
         <div className="admin-knowledge">
           <div className="admin-card">
-            <h3>文書アップロード</h3>
+            <h3>AI再学習文書アップロード</h3>
             <p style={{ fontSize: 13, opacity: 0.8 }}>
               アップロードされた文書は再読み込み後に会話へ反映されます。
             </p>
@@ -228,7 +228,7 @@ const AdminView: React.FC<AdminViewProps> = ({ token, adminTab, setAdminTab }) =
           </div>
 
           <div className="admin-card">
-            <h3>アップロード文書一覧</h3>
+            <h3>AI再学習文書一覧</h3>
             <table className="admin-table">
               <thead>
                 <tr>
